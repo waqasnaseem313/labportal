@@ -1188,12 +1188,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 <div class="modal-ov" id="modal-req"><div class="modal"><div class="modal-hd"><span class="modal-title" id="mr-title">Request Detail</span><button class="modal-x" onclick="closeM('modal-req')">✕</button></div><div class="modal-bd" id="mr-body"></div><div class="modal-ft" id="mr-ft"></div></div></div>
 <div class="modal-ov" id="modal-upload"><div class="modal"><div class="modal-hd"><span class="modal-title">📄 Upload Report</span><button class="modal-x" onclick="closeM('modal-upload')">✕</button></div><div class="modal-bd"><input type="hidden" id="up-rid"><div class="fr"><label class="fl">Report Link (Google Drive URL)</label><input type="url" class="fi" id="up-url" placeholder="https://drive.google.com/file/d/..."><p style="font-size:.74rem;color:rgba(255,255,255,.35);margin-top:5px">Upload PDF to Google Drive → Share → Anyone with link → paste URL here.</p></div><div class="fr"><label class="fl">Analyst Notes (optional)</label><textarea class="ft" id="up-notes" placeholder="Summary of findings..."></textarea></div><div id="up-alert" class="modal-alert"></div></div><div class="modal-ft"><button class="btn btn-a-ghost" onclick="closeM('modal-upload')">Cancel</button><button class="btn btn-a-teal" onclick="submitReport()"><span id="up-btn">Upload & Complete</span></button></div></div></div>
 
+
 <script>
-// ╔══════════════════════════════════════════════════════════════╗
-// ║  STEP 1: PASTE YOUR APPS SCRIPT URL BETWEEN THE QUOTES BELOW ║
-// ║  After deploying Code.gs, copy its /exec URL and paste here  ║
-// ╚══════════════════════════════════════════════════════════════╝
-// ✅ YOUR APPS SCRIPT URL IS SET BELOW — DO NOT CHANGE UNLESS YOU REDEPLOY
+// ✅ APPS SCRIPT URL — hardcoded, works for everyone automatically
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyGI0lw8b0clJSZzQbhOLEWuR1woTogXwYgFCVwMWg7FuBae6Dy_O8qks8Pbv20advW/exec';
 
 // ── state ──────────────────────────────────────────────────────
@@ -1731,8 +1728,4 @@ function toggleMobileMenu() {}
 window.addEventListener('scroll', function() {
   var secs  = ['services-sec','about-sec','packages-sec','contact-sec','portal-sec'];
   var links = document.querySelectorAll('.nav-link');
-  var cur   = '';
-  secs.forEach(function(id){ var el=document.getElementById(id); if(el&&window.scrollY>=el.offsetTop-120) cur=id; });
-  links.forEach(function(l,i){
-    l.classList.remove('active');
-    if ((cur==='services-sec'&&i===
+  v
