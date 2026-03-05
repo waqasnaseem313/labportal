@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -929,12 +930,16 @@ tr:hover td{background:rgba(255,255,255,.02)}
         </div>
         <div class="p-card-body">
           <div class="setup-banner" id="setup-box">
-            <h4>⚙ Initial Setup Required</h4>
-            <p>To connect the database, paste your Google Apps Script Web App URL:</p>
+            <h4>⚙️ One-Time Setup — Connect Your Database</h4>
+            <p>Paste your Google Apps Script Web App URL below to connect the database:</p>
             <div class="setup-row">
-              <input type="text" class="fi" id="script-url-input" placeholder="https://script.google.com/macros/s/..." style="font-size:.76rem">
-              <button class="btn btn-teal btn-sm" style="white-space:nowrap" onclick="saveScriptUrl()">Save</button>
+              <input type="text" class="fi" id="script-url-input" placeholder="https://script.google.com/macros/s/...long-id.../exec" style="font-size:.76rem">
+              <button class="btn btn-teal btn-sm" style="white-space:nowrap" onclick="saveScriptUrl()">Connect</button>
             </div>
+            <p style="font-size:.7rem;color:#92400e;margin-top:6px">Get this URL from: Apps Script → Deploy → Manage Deployments → Copy Web App URL</p>
+          </div>
+          <div style="text-align:right;margin-bottom:8px">
+            <a id="change-url-link" href="#" onclick="changeScriptUrl();return false;" style="font-size:.72rem;color:var(--teal);display:none">⚙ Change Script URL</a>
           </div>
           <div class="fr"><label class="fl">Email Address</label><input type="email" class="fi" id="login-email" placeholder="you@example.com"></div>
           <div class="fr"><label class="fl">Password</label><input type="password" class="fi" id="login-password" placeholder="••••••••"></div>
@@ -1184,21 +1189,50 @@ tr:hover td{background:rgba(255,255,255,.02)}
 ════════════════════════════════════════════════════════ -->
 <script>
 // ── CONFIG ──────────────────────────────────────────────────
-let SURL = 'https://script.google.com/macros/s/AKfycbyGI0lw8b0clJSZzQbhOLEWuR1woTogXwYgFCVwMWg7FuBae6Dy_O8qks8Pbv20advW/exec';
+// PASTE YOUR APPS SCRIPT URL BETWEEN THE QUOTES ON THE NEXT LINE:
+const HARDCODED_URL = ''; // e.g. 'https://script.google.com/macros/s/ABC.../exec'
+
+let SURL = HARDCODED_URL || localStorage.getItem('adc_surl') || '';
 let CU = null, ALL_R = [], ALL_U = [];
 
 function saveScriptUrl(){
-  const v=document.getElementById('script-url-input').value.trim();
-  if(!v.startsWith('https://script.google.com')){showPA('login-alert','pa-err','Please enter a valid Google Apps Script URL.');return;}
-  SURL=v;localStorage.setItem('adc_surl',v);
-  document.getElementById('setup-box').style.display='none';
-  showPA('login-alert','pa-ok','URL saved! You can now sign in.');
+  const v = document.getElementById('script-url-input').value.trim();
+  if(!v.startsWith('https://script.google.com')){
+    showPA('login-alert','pa-err','❌ Invalid URL. Must start with https://script.google.com');
+    return;
+  }
+  SURL = v;
+  localStorage.setItem('adc_surl', v);
+  document.getElementById('setup-box').style.display = 'none';
+  document.getElementById('change-url-link').style.display = 'inline';
+  showPA('login-alert','pa-ok','✅ Script URL saved! You can now sign in.');
 }
 
-window.addEventListener('load',()=>{
-  if(SURL){document.getElementById('script-url-input').value=SURL;document.getElementById('setup-box').style.display='none';}
-  const s=sessionStorage.getItem('adc_cu');
-  if(s){CU=JSON.parse(s);enterApp();}
+function changeScriptUrl(){
+  document.getElementById('setup-box').style.display = 'block';
+  document.getElementById('script-url-input').value = SURL;
+  document.getElementById('change-url-link').style.display = 'none';
+}
+
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('adc_surl');
+  if(HARDCODED_URL){
+    // URL is hardcoded — hide setup box entirely
+    document.getElementById('setup-box').style.display = 'none';
+    document.getElementById('change-url-link').style.display = 'none';
+  } else if(saved){
+    // URL was previously saved in browser
+    SURL = saved;
+    document.getElementById('script-url-input').value = saved;
+    document.getElementById('setup-box').style.display = 'none';
+    document.getElementById('change-url-link').style.display = 'inline';
+  } else {
+    // First time — show setup box
+    document.getElementById('setup-box').style.display = 'block';
+    document.getElementById('change-url-link').style.display = 'none';
+  }
+  const s = sessionStorage.getItem('adc_cu');
+  if(s){ CU = JSON.parse(s); enterApp(); }
 });
 
 function toggleMobileMenu(){}
@@ -1460,8 +1494,4 @@ window.addEventListener('scroll',()=>{
   const links=document.querySelectorAll('.nav-link');
   let current='';
   sections.forEach(id=>{const el=document.getElementById(id);if(el&&window.scrollY>=el.offsetTop-120)current=id;});
-  links.forEach((l,i)=>{l.classList.remove('active');if((current==='services-sec'&&i===1)||(current==='about-sec'&&i===2)||(current==='packages-sec'&&i===3)||(current==='contact-sec'&&i===4)||(current==='portal-sec'&&i===5))l.classList.add('active');if(!current&&i===0)l.classList.add('active');});
-});
-</script>
-</body>
-</html>
+  links.forEach((l,i)=>{l.classList.remove('active');if((current==='services-sec'&&i===1)||(curr
