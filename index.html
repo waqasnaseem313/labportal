@@ -1,0 +1,1782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LabPortal — Scientific Analysis Management</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2332;
+    --border: #1e2d42;
+    --accent: #00d4aa;
+    --accent2: #0ea5e9;
+    --accent3: #f59e0b;
+    --danger: #ef4444;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --font-display: 'DM Serif Display', serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── GRID BACKGROUND ─── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,170,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,170,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ─── PAGES ─── */
+  .page { display: none; position: relative; z-index: 1; }
+  .page.active { display: block; }
+
+  /* ─── AUTH SCREEN ─── */
+  #auth-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .auth-container {
+    width: 100%;
+    max-width: 460px;
+  }
+
+  .logo-block {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .logo-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-bottom: 16px;
+  }
+
+  .logo-mark span {
+    display: block;
+    width: 8px;
+    border-radius: 2px;
+    background: var(--accent);
+  }
+
+  .logo-mark span:nth-child(1) { height: 24px; }
+  .logo-mark span:nth-child(2) { height: 36px; background: var(--accent2); }
+  .logo-mark span:nth-child(3) { height: 18px; background: var(--accent3); }
+  .logo-mark span:nth-child(4) { height: 30px; }
+
+  .logo-title {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    color: var(--text);
+    letter-spacing: -0.5px;
+    display: block;
+  }
+
+  .logo-sub {
+    font-size: 0.75rem;
+    color: var(--text3);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+  }
+
+  .auth-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .auth-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .auth-tab {
+    flex: 1;
+    padding: 16px;
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+
+  .auth-tab.active {
+    color: var(--accent);
+    background: rgba(0,212,170,0.05);
+    border-bottom: 2px solid var(--accent);
+    margin-bottom: -1px;
+  }
+
+  .auth-form { padding: 28px; display: none; }
+  .auth-form.active { display: block; }
+
+  .form-row { margin-bottom: 18px; }
+
+  .form-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text2);
+    font-family: var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .form-input, .form-select, .form-textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,212,170,0.1);
+  }
+
+  .form-input::placeholder { color: var(--text3); }
+
+  .form-select option { background: var(--surface); }
+
+  .form-textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+
+  .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px 22px;
+    border-radius: 8px;
+    border: none;
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #0a0e1a;
+    width: 100%;
+  }
+
+  .btn-primary:hover { background: #00b894; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,212,170,0.3); }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover { background: var(--border); }
+
+  .btn-danger {
+    background: rgba(239,68,68,0.1);
+    color: var(--danger);
+    border: 1px solid rgba(239,68,68,0.3);
+  }
+
+  .btn-danger:hover { background: rgba(239,68,68,0.2); }
+
+  .btn-success {
+    background: rgba(16,185,129,0.1);
+    color: var(--success);
+    border: 1px solid rgba(16,185,129,0.3);
+  }
+
+  .btn-success:hover { background: rgba(16,185,129,0.2); }
+
+  .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+
+  .btn-icon {
+    width: 34px; height: 34px;
+    padding: 0;
+    border-radius: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    font-size: 1rem;
+  }
+
+  .btn-icon:hover { background: var(--border); color: var(--text); }
+
+  .alert {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    margin-top: 12px;
+    display: none;
+  }
+
+  .alert.show { display: block; }
+  .alert-error { background: rgba(239,68,68,0.1); color: #fca5a5; border: 1px solid rgba(239,68,68,0.2); }
+  .alert-success { background: rgba(16,185,129,0.1); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.2); }
+  .alert-info { background: rgba(14,165,233,0.1); color: #7dd3fc; border: 1px solid rgba(14,165,233,0.2); }
+
+  /* ─── APP LAYOUT ─── */
+  #app-page {
+    display: none;
+    min-height: 100vh;
+  }
+
+  #app-page.active {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .topbar-logo {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .topbar-logo .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  .topbar-badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .badge-admin { background: rgba(245,158,11,0.15); color: var(--warning); border: 1px solid rgba(245,158,11,0.3); }
+  .badge-user { background: rgba(14,165,233,0.15); color: var(--accent2); border: 1px solid rgba(14,165,233,0.3); }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .user-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px 4px 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+  }
+
+  .user-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #0a0e1a;
+  }
+
+  .user-name { font-size: 0.85rem; color: var(--text2); font-weight: 500; }
+
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+  }
+
+  .nav-tab {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: none;
+    background: none;
+    color: var(--text3);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .nav-tab:hover { background: var(--surface2); color: var(--text2); }
+  .nav-tab.active { background: rgba(0,212,170,0.1); color: var(--accent); }
+
+  .content { flex: 1; padding: 28px 24px; max-width: 1100px; width: 100%; margin: 0 auto; }
+
+  /* ─── PANELS ─── */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    gap: 16px;
+  }
+
+  .panel-title {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .panel-subtitle {
+    font-size: 0.85rem;
+    color: var(--text3);
+    margin-top: 4px;
+    font-family: var(--font-mono);
+  }
+
+  /* ─── STATS ROW ─── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .stat-card.c1::before { background: var(--accent); }
+  .stat-card.c2::before { background: var(--accent2); }
+  .stat-card.c3::before { background: var(--accent3); }
+  .stat-card.c4::before { background: var(--success); }
+
+  .stat-val {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* ─── CARDS / TABLES ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text2);
+    font-family: var(--font-mono);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    padding: 10px 16px;
+    text-align: left;
+    font-size: 0.7rem;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 12px 16px;
+    font-size: 0.875rem;
+    border-bottom: 1px solid rgba(30,45,66,0.5);
+    color: var(--text2);
+    vertical-align: middle;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .td-primary { color: var(--text); font-weight: 500; }
+  .td-mono { font-family: var(--font-mono); font-size: 0.8rem; }
+
+  /* ─── STATUS BADGES ─── */
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .status::before {
+    content: '';
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .status-pending { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
+  .status-pending::before { background: #fbbf24; }
+  .status-approved { background: rgba(16,185,129,0.12); color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
+  .status-approved::before { background: #34d399; box-shadow: 0 0 4px #34d399; }
+  .status-rejected { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+  .status-rejected::before { background: #f87171; }
+  .status-received { background: rgba(14,165,233,0.12); color: #38bdf8; border: 1px solid rgba(14,165,233,0.25); }
+  .status-received::before { background: #38bdf8; }
+  .status-processing { background: rgba(168,85,247,0.12); color: #c084fc; border: 1px solid rgba(168,85,247,0.25); }
+  .status-processing::before { background: #c084fc; animation: pulse 1.5s infinite; }
+  .status-completed { background: rgba(16,185,129,0.12); color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
+  .status-completed::before { background: #34d399; }
+  .status-submitted { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
+  .status-submitted::before { background: #fbbf24; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ─── MODAL ─── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 540px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-title {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    color: var(--text);
+  }
+
+  .modal-close {
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text3);
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-close:hover { color: var(--text); background: var(--border); }
+
+  .modal-body { padding: 24px; }
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  .modal-footer .btn { width: auto; }
+
+  /* ─── EMPTY STATE ─── */
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text3);
+  }
+
+  .empty-icon { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.4; }
+  .empty-text { font-size: 0.9rem; }
+
+  /* ─── NOTIFICATION DOT ─── */
+  .notif-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    background: var(--danger);
+    border-radius: 50%;
+    margin-left: 6px;
+    vertical-align: middle;
+    box-shadow: 0 0 6px var(--danger);
+  }
+
+  /* ─── LOADING ─── */
+  .loader {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid rgba(0,212,170,0.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .btn .loader { width: 14px; height: 14px; }
+
+  /* ─── PROGRESS TRACKER ─── */
+  .progress-track {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 12px 0;
+  }
+
+  .progress-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    position: relative;
+  }
+
+  .progress-step::after {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    right: -50%;
+    height: 2px;
+    background: var(--border);
+    z-index: 0;
+  }
+
+  .progress-step:last-child::after { display: none; }
+
+  .progress-dot {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+  }
+
+  .progress-dot.done {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0a0e1a;
+    font-weight: 700;
+  }
+
+  .progress-dot.active {
+    background: var(--surface);
+    border-color: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  .progress-step::after.done { background: var(--accent); }
+
+  .progress-label {
+    font-size: 0.65rem;
+    font-family: var(--font-mono);
+    color: var(--text3);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  .inline-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .select-sm {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .select-sm:focus { border-color: var(--accent); }
+  .select-sm option { background: var(--surface); }
+
+  .td-actions { width: 1%; white-space: nowrap; }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .info-item label {
+    display: block;
+    font-size: 0.7rem;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text3);
+    margin-bottom: 3px;
+  }
+
+  .info-item span {
+    font-size: 0.9rem;
+    color: var(--text);
+  }
+
+  .report-link-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+  }
+
+  .report-link-box a {
+    color: var(--accent);
+    text-decoration: none;
+    word-break: break-all;
+  }
+
+  .report-link-box a:hover { text-decoration: underline; }
+
+  .tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: var(--accent);
+    color: #0a0e1a;
+    border-radius: 9px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    margin-left: 4px;
+    font-family: var(--font-mono);
+  }
+
+  .approval-notice {
+    background: linear-gradient(135deg, rgba(14,165,233,0.08), rgba(0,212,170,0.08));
+    border: 1px solid rgba(0,212,170,0.2);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    margin: 40px auto;
+    max-width: 420px;
+  }
+
+  .approval-notice .icon { font-size: 2.5rem; margin-bottom: 12px; }
+  .approval-notice h3 { font-family: var(--font-display); font-size: 1.3rem; margin-bottom: 8px; }
+  .approval-notice p { font-size: 0.875rem; color: var(--text3); line-height: 1.6; }
+
+  .config-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .config-box p {
+    font-size: 0.85rem;
+    color: var(--text2);
+    line-height: 1.6;
+    margin-bottom: 8px;
+  }
+
+  .config-box code {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    background: var(--surface2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+
+  .setup-needed {
+    background: rgba(245,158,11,0.08);
+    border: 1px solid rgba(245,158,11,0.2);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+
+  .setup-needed h4 {
+    color: var(--warning);
+    font-size: 0.875rem;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+
+  .setup-needed p {
+    font-size: 0.85rem;
+    color: var(--text2);
+    line-height: 1.6;
+  }
+
+  @media (max-width: 640px) {
+    .form-row-2 { grid-template-columns: 1fr; }
+    .info-grid { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .topbar { padding: 0 16px; }
+    .content { padding: 20px 16px; }
+    .nav-tab { padding: 6px 10px; font-size: 0.8rem; }
+    th, td { padding: 10px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════ AUTH PAGE ═══ -->
+<div id="auth-page" class="page active">
+  <div class="auth-container">
+    <div class="logo-block">
+      <div class="logo-mark">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <span class="logo-title">LabPortal</span>
+      <span class="logo-sub">Scientific Analysis Management</span>
+    </div>
+
+    <div id="setup-warning" class="setup-needed" style="display:none">
+      <h4>⚙ Setup Required</h4>
+      <p>Configure your Google Apps Script URL below to connect the database, then refresh.</p>
+    </div>
+
+    <div class="config-box" id="config-panel">
+      <p><strong style="color:var(--text)">⚡ Quick Setup</strong> — paste your Google Apps Script Web App URL:</p>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input type="text" class="form-input" id="script-url-input" placeholder="https://script.google.com/macros/s/..." style="font-size:0.8rem">
+        <button class="btn btn-secondary" style="width:auto;padding:10px 16px;white-space:nowrap" onclick="saveScriptUrl()">Save</button>
+      </div>
+      <p style="margin-top:8px;margin-bottom:0;font-size:0.78rem;color:var(--text3)">See <strong>SETUP.md</strong> for step-by-step instructions to deploy the Google Apps Script backend.</p>
+    </div>
+
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthTab('login')">Sign In</button>
+        <button class="auth-tab" onclick="switchAuthTab('signup')">Create Account</button>
+      </div>
+
+      <!-- LOGIN -->
+      <div class="auth-form active" id="login-form">
+        <div class="form-row">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-input" id="login-email" placeholder="you@example.com">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-input" id="login-password" placeholder="••••••••">
+        </div>
+        <div id="login-alert" class="alert"></div>
+        <div style="margin-top:20px">
+          <button class="btn btn-primary" onclick="handleLogin()">
+            <span id="login-btn-text">Sign In</span>
+          </button>
+        </div>
+        <div style="text-align:center;margin-top:16px;font-size:0.8rem;color:var(--text3)">
+          Admin access: use admin credentials set in your Google Sheet
+        </div>
+      </div>
+
+      <!-- SIGNUP -->
+      <div class="auth-form" id="signup-form">
+        <div class="form-row-2">
+          <div class="form-row">
+            <label class="form-label">First Name</label>
+            <input type="text" class="form-input" id="signup-fname" placeholder="John">
+          </div>
+          <div class="form-row">
+            <label class="form-label">Last Name</label>
+            <input type="text" class="form-input" id="signup-lname" placeholder="Doe">
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-input" id="signup-email" placeholder="you@institution.edu">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Organization / Institution</label>
+          <input type="text" class="form-input" id="signup-org" placeholder="University of Science">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Department</label>
+          <input type="text" class="form-input" id="signup-dept" placeholder="Chemistry Dept.">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Phone Number</label>
+          <input type="tel" class="form-input" id="signup-phone" placeholder="+1 555 000 0000">
+        </div>
+        <div class="form-row-2">
+          <div class="form-row">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-input" id="signup-password" placeholder="••••••••">
+          </div>
+          <div class="form-row">
+            <label class="form-label">Confirm Password</label>
+            <input type="password" class="form-input" id="signup-confirm" placeholder="••••••••">
+          </div>
+        </div>
+        <div id="signup-alert" class="alert"></div>
+        <div style="margin-top:20px">
+          <button class="btn btn-primary" onclick="handleSignup()">
+            <span id="signup-btn-text">Request Account</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ APP PAGE ═══ -->
+<div id="app-page" class="page">
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">
+        <div class="dot"></div>
+        LabPortal
+      </div>
+      <span class="topbar-badge" id="role-badge"></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px" id="nav-container">
+      <div class="nav-tabs" id="nav-tabs"></div>
+    </div>
+    <div class="topbar-right">
+      <div class="user-chip">
+        <div class="user-avatar" id="user-avatar-initials">?</div>
+        <span class="user-name" id="user-display-name">User</span>
+      </div>
+      <button class="btn btn-icon" title="Sign Out" onclick="handleLogout()">⏻</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ── PENDING APPROVAL ── -->
+    <div id="panel-pending" class="panel">
+      <div class="approval-notice">
+        <div class="icon">⏳</div>
+        <h3>Account Pending Approval</h3>
+        <p>Your account registration has been received. The lab administrator will review and approve your account shortly. You'll be able to log in once approved.</p>
+      </div>
+    </div>
+
+    <!-- ── USER: DASHBOARD ── -->
+    <div id="panel-user-dashboard" class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Dashboard</div>
+          <div class="panel-subtitle">Overview of your analysis requests</div>
+        </div>
+        <button class="btn btn-primary" style="width:auto" onclick="showPanel('user-new-request')">+ New Request</button>
+      </div>
+      <div class="stats-row" id="user-stats"></div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Recent Requests</span>
+          <button class="btn btn-secondary btn-sm" onclick="loadUserRequests()">↻ Refresh</button>
+        </div>
+        <div id="user-requests-table"></div>
+      </div>
+    </div>
+
+    <!-- ── USER: NEW REQUEST ── -->
+    <div id="panel-user-new-request" class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Submit Analysis Request</div>
+          <div class="panel-subtitle">Fill in sample details and select analyses</div>
+        </div>
+        <button class="btn btn-secondary" style="width:auto" onclick="showPanel('user-dashboard')">← Back</button>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Sample Information</span></div>
+        <div style="padding:24px">
+          <div class="form-row-2">
+            <div class="form-row">
+              <label class="form-label">Sample Name / ID</label>
+              <input type="text" class="form-input" id="req-sample-name" placeholder="Sample-001">
+            </div>
+            <div class="form-row">
+              <label class="form-label">Sample Type</label>
+              <select class="form-select" id="req-sample-type">
+                <option value="">Select type...</option>
+                <option>Soil</option>
+                <option>Water</option>
+                <option>Blood</option>
+                <option>Urine</option>
+                <option>Plant tissue</option>
+                <option>Food</option>
+                <option>Chemical compound</option>
+                <option>Polymer</option>
+                <option>Metal / Alloy</option>
+                <option>Pharmaceutical</option>
+                <option>Environmental</option>
+                <option>Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Analysis Required</label>
+            <select class="form-select" id="req-analysis-type">
+              <option value="">Select analysis...</option>
+              <optgroup label="Chromatography">
+                <option>HPLC — High Performance Liquid Chromatography</option>
+                <option>GC-MS — Gas Chromatography Mass Spectrometry</option>
+                <option>LC-MS/MS — Liquid Chromatography Tandem MS</option>
+              </optgroup>
+              <optgroup label="Spectroscopy">
+                <option>UV-Vis Spectrophotometry</option>
+                <option>FTIR Spectroscopy</option>
+                <option>NMR Spectroscopy</option>
+                <option>AAS — Atomic Absorption Spectroscopy</option>
+                <option>ICP-OES — Inductively Coupled Plasma</option>
+                <option>XRF — X-ray Fluorescence</option>
+              </optgroup>
+              <optgroup label="Microscopy">
+                <option>SEM — Scanning Electron Microscopy</option>
+                <option>TEM — Transmission Electron Microscopy</option>
+                <option>Optical Microscopy</option>
+              </optgroup>
+              <optgroup label="Physical/Chemical">
+                <option>Particle Size Analysis</option>
+                <option>TGA — Thermogravimetric Analysis</option>
+                <option>DSC — Differential Scanning Calorimetry</option>
+                <option>BET Surface Area</option>
+                <option>pH & Conductivity</option>
+                <option>Elemental Analysis (CHN)</option>
+              </optgroup>
+              <optgroup label="Biological">
+                <option>Microbial Count</option>
+                <option>PCR / qPCR</option>
+                <option>ELISA</option>
+                <option>Cell Viability Assay</option>
+              </optgroup>
+              <option value="Other">Other (specify in notes)</option>
+            </select>
+          </div>
+          <div class="form-row-2">
+            <div class="form-row">
+              <label class="form-label">Number of Samples</label>
+              <input type="number" class="form-input" id="req-qty" min="1" value="1">
+            </div>
+            <div class="form-row">
+              <label class="form-label">Priority</label>
+              <select class="form-select" id="req-priority">
+                <option value="Normal">Normal</option>
+                <option value="Urgent">Urgent</option>
+                <option value="Rush">Rush (extra charges)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Sample Description & Notes</label>
+            <textarea class="form-textarea" id="req-notes" placeholder="Describe your sample, any special handling instructions, expected results, or additional context..."></textarea>
+          </div>
+          <div id="request-alert" class="alert"></div>
+          <div style="display:flex;gap:10px;margin-top:8px">
+            <button class="btn btn-primary" style="width:auto" onclick="submitRequest()">
+              <span id="req-btn-text">Submit Request</span>
+            </button>
+            <button class="btn btn-secondary" style="width:auto" onclick="clearRequestForm()">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ADMIN: DASHBOARD ── -->
+    <div id="panel-admin-dashboard" class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Admin Dashboard</div>
+          <div class="panel-subtitle">Lab management overview</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" style="width:auto" onclick="loadAdminDashboard()">↻ Refresh</button>
+      </div>
+      <div class="stats-row" id="admin-stats"></div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Pending Account Approvals <span class="tab-count" id="pending-count">0</span></span>
+        </div>
+        <div id="admin-pending-users-table"></div>
+      </div>
+    </div>
+
+    <!-- ── ADMIN: REQUESTS ── -->
+    <div id="panel-admin-requests" class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Analysis Requests</div>
+          <div class="panel-subtitle">Manage incoming sample requests</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" style="width:auto" onclick="loadAdminRequests()">↻ Refresh</button>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">All Requests</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select class="select-sm" id="filter-status" onchange="filterRequests()">
+              <option value="">All Status</option>
+              <option>Submitted</option>
+              <option>Received</option>
+              <option>Processing</option>
+              <option>Completed</option>
+            </select>
+          </div>
+        </div>
+        <div id="admin-requests-table"></div>
+      </div>
+    </div>
+
+    <!-- ── ADMIN: USERS ── -->
+    <div id="panel-admin-users" class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">User Management</div>
+          <div class="panel-subtitle">All registered accounts</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" style="width:auto" onclick="loadAdminUsers()">↻ Refresh</button>
+      </div>
+      <div class="card">
+        <div id="admin-users-table"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ MODALS ═══ -->
+
+<!-- Request Detail Modal -->
+<div class="modal-overlay" id="modal-request">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-request-title">Request Detail</span>
+      <button class="modal-close" onclick="closeModal('modal-request')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-request-body"></div>
+    <div class="modal-footer" id="modal-request-footer"></div>
+  </div>
+</div>
+
+<!-- Report Upload Modal -->
+<div class="modal-overlay" id="modal-upload">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Upload Report</span>
+      <button class="modal-close" onclick="closeModal('modal-upload')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="upload-request-id">
+      <div class="form-row">
+        <label class="form-label">Report Link (Google Drive / any URL)</label>
+        <input type="url" class="form-input" id="upload-report-url" placeholder="https://drive.google.com/file/d/...">
+        <p style="font-size:0.78rem;color:var(--text3);margin-top:6px">Upload the report PDF to Google Drive, set sharing to "Anyone with link", and paste the link here.</p>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Analyst Notes (optional)</label>
+        <textarea class="form-textarea" id="upload-notes" placeholder="Summary of findings, observations..."></textarea>
+      </div>
+      <div id="upload-alert" class="alert"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-upload')">Cancel</button>
+      <button class="btn btn-primary" style="width:auto" onclick="submitReport()">
+        <span id="upload-btn-text">Upload & Complete</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ SCRIPT ═══ -->
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────────────
+let SCRIPT_URL = localStorage.getItem('lab_script_url') || '';
+let currentUser = null;
+let allRequests = [];
+let allUsers = [];
+
+function saveScriptUrl() {
+  const val = document.getElementById('script-url-input').value.trim();
+  if (!val.startsWith('https://script.google.com')) {
+    showAlert('login-alert', 'error', 'Please enter a valid Google Apps Script URL.');
+    return;
+  }
+  SCRIPT_URL = val;
+  localStorage.setItem('lab_script_url', val);
+  document.getElementById('config-panel').style.display = 'none';
+  showAlert('login-alert', 'success', 'Script URL saved! You can now sign in.');
+}
+
+// On load
+window.addEventListener('load', () => {
+  if (SCRIPT_URL) {
+    document.getElementById('script-url-input').value = SCRIPT_URL;
+    document.getElementById('config-panel').style.display = 'none';
+  } else {
+    document.getElementById('config-panel').style.display = 'block';
+  }
+  const saved = sessionStorage.getItem('lab_user');
+  if (saved) {
+    currentUser = JSON.parse(saved);
+    enterApp();
+  }
+});
+
+// ── AUTH TABS ────────────────────────────────────────────────────────────
+function switchAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+  document.querySelector(`.auth-tab:${tab === 'login' ? 'first-child' : 'last-child'}`).classList.add('active');
+  document.getElementById(`${tab}-form`).classList.add('active');
+}
+
+// ── API CALL ─────────────────────────────────────────────────────────────
+async function api(action, data = {}) {
+  if (!SCRIPT_URL) throw new Error('Script URL not configured. Please add your Google Apps Script URL above.');
+  const url = `${SCRIPT_URL}?action=${action}&${new URLSearchParams(data)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Network error');
+  return res.json();
+}
+
+async function apiPost(action, data = {}) {
+  if (!SCRIPT_URL) throw new Error('Script URL not configured.');
+  const res = await fetch(SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action, ...data }),
+    headers: { 'Content-Type': 'text/plain' }
+  });
+  if (!res.ok) throw new Error('Network error');
+  return res.json();
+}
+
+// ── LOGIN ────────────────────────────────────────────────────────────────
+async function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-password').value;
+  if (!email || !pass) { showAlert('login-alert','error','Please fill in all fields.'); return; }
+  setLoading('login-btn-text', true, 'Signing in...');
+  try {
+    const res = await api('login', { email, password: pass });
+    if (res.success) {
+      currentUser = res.user;
+      sessionStorage.setItem('lab_user', JSON.stringify(currentUser));
+      enterApp();
+    } else {
+      showAlert('login-alert', 'error', res.message || 'Invalid credentials.');
+    }
+  } catch(e) {
+    showAlert('login-alert', 'error', e.message);
+  }
+  setLoading('login-btn-text', false, 'Sign In');
+}
+
+// ── SIGNUP ───────────────────────────────────────────────────────────────
+async function handleSignup() {
+  const fname = document.getElementById('signup-fname').value.trim();
+  const lname = document.getElementById('signup-lname').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
+  const org = document.getElementById('signup-org').value.trim();
+  const dept = document.getElementById('signup-dept').value.trim();
+  const phone = document.getElementById('signup-phone').value.trim();
+  const pass = document.getElementById('signup-password').value;
+  const conf = document.getElementById('signup-confirm').value;
+  if (!fname||!lname||!email||!org||!pass) { showAlert('signup-alert','error','Please fill in all required fields.'); return; }
+  if (pass !== conf) { showAlert('signup-alert','error','Passwords do not match.'); return; }
+  if (pass.length < 6) { showAlert('signup-alert','error','Password must be at least 6 characters.'); return; }
+  setLoading('signup-btn-text', true, 'Submitting...');
+  try {
+    const res = await apiPost('signup', { firstName: fname, lastName: lname, email, org, dept, phone, password: pass });
+    if (res.success) {
+      showAlert('signup-alert', 'success', 'Account request submitted! The admin will review and approve your account.');
+    } else {
+      showAlert('signup-alert', 'error', res.message || 'Signup failed.');
+    }
+  } catch(e) {
+    showAlert('signup-alert', 'error', e.message);
+  }
+  setLoading('signup-btn-text', false, 'Request Account');
+}
+
+// ── APP ENTRY ────────────────────────────────────────────────────────────
+function enterApp() {
+  document.getElementById('auth-page').classList.remove('active');
+  document.getElementById('app-page').classList.add('active');
+
+  const initials = ((currentUser.firstName||'?')[0] + (currentUser.lastName||'?')[0]).toUpperCase();
+  document.getElementById('user-avatar-initials').textContent = initials;
+  document.getElementById('user-display-name').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+
+  if (currentUser.role === 'admin') {
+    document.getElementById('role-badge').textContent = 'Administrator';
+    document.getElementById('role-badge').className = 'topbar-badge badge-admin';
+    buildNav([
+      { id: 'admin-dashboard', label: 'Dashboard', fn: loadAdminDashboard },
+      { id: 'admin-requests', label: 'Requests', fn: loadAdminRequests },
+      { id: 'admin-users', label: 'Users', fn: loadAdminUsers }
+    ]);
+    showPanel('admin-dashboard');
+    loadAdminDashboard();
+  } else if (currentUser.status === 'pending') {
+    document.getElementById('role-badge').textContent = 'Pending';
+    document.getElementById('role-badge').className = 'topbar-badge';
+    document.getElementById('nav-container').style.display = 'none';
+    showPanel('pending');
+  } else {
+    document.getElementById('role-badge').textContent = 'Researcher';
+    document.getElementById('role-badge').className = 'topbar-badge badge-user';
+    buildNav([
+      { id: 'user-dashboard', label: 'My Requests', fn: loadUserRequests },
+      { id: 'user-new-request', label: '+ New Request', fn: () => {} }
+    ]);
+    showPanel('user-dashboard');
+    loadUserRequests();
+  }
+}
+
+function buildNav(items) {
+  const nav = document.getElementById('nav-tabs');
+  nav.innerHTML = items.map(i => `<button class="nav-tab" id="nav-${i.id}" onclick="navTo('${i.id}', ${i.fn.name || '() => {}'});">${i.label}</button>`).join('');
+  items.forEach(i => {
+    document.getElementById(`nav-${i.id}`).onclick = () => { showPanel(i.id); if(i.fn) i.fn(); };
+  });
+}
+
+function handleLogout() {
+  currentUser = null;
+  sessionStorage.removeItem('lab_user');
+  location.reload();
+}
+
+// ── PANELS ───────────────────────────────────────────────────────────────
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`panel-${id}`)?.classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`nav-${id}`)?.classList.add('active');
+}
+
+// ── USER: LOAD REQUESTS ──────────────────────────────────────────────────
+async function loadUserRequests() {
+  showPanel('user-dashboard');
+  const tbl = document.getElementById('user-requests-table');
+  tbl.innerHTML = '<div style="padding:24px;text-align:center"><div class="loader"></div></div>';
+  try {
+    const res = await api('getMyRequests', { userId: currentUser.id });
+    const requests = res.requests || [];
+    allRequests = requests;
+    renderUserStats(requests);
+    renderUserRequestsTable(requests);
+  } catch(e) {
+    tbl.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><div class="empty-text">${e.message}</div></div>`;
+  }
+}
+
+function renderUserStats(reqs) {
+  const total = reqs.length;
+  const submitted = reqs.filter(r=>r.status==='Submitted').length;
+  const processing = reqs.filter(r=>r.status==='Processing'||r.status==='Received').length;
+  const completed = reqs.filter(r=>r.status==='Completed').length;
+  document.getElementById('user-stats').innerHTML = `
+    <div class="stat-card c1"><div class="stat-val">${total}</div><div class="stat-label">Total Requests</div></div>
+    <div class="stat-card c2"><div class="stat-val">${submitted}</div><div class="stat-label">Submitted</div></div>
+    <div class="stat-card c3"><div class="stat-val">${processing}</div><div class="stat-label">In Progress</div></div>
+    <div class="stat-card c4"><div class="stat-val">${completed}</div><div class="stat-label">Completed</div></div>
+  `;
+}
+
+function renderUserRequestsTable(reqs) {
+  const tbl = document.getElementById('user-requests-table');
+  if (!reqs.length) {
+    tbl.innerHTML = '<div class="empty-state"><div class="empty-icon">🔬</div><div class="empty-text">No requests yet. Submit your first analysis request!</div></div>';
+    return;
+  }
+  tbl.innerHTML = `<table>
+    <thead><tr><th>Request ID</th><th>Sample</th><th>Analysis</th><th>Priority</th><th>Date</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    ${reqs.map(r => `
+      <tr>
+        <td class="td-mono">${r.id}</td>
+        <td class="td-primary">${r.sampleName}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.analysisType}</td>
+        <td><span class="status" style="${priorityStyle(r.priority)}">${r.priority}</span></td>
+        <td class="td-mono">${formatDate(r.createdAt)}</td>
+        <td>${statusBadge(r.status)}</td>
+        <td class="td-actions">
+          <button class="btn btn-secondary btn-sm" onclick="viewUserRequest('${r.id}')">View</button>
+          ${r.reportUrl ? `<a href="${r.reportUrl}" target="_blank" class="btn btn-success btn-sm" style="text-decoration:none">⬇ Report</a>` : ''}
+        </td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+function viewUserRequest(id) {
+  const r = allRequests.find(x => x.id === id);
+  if (!r) return;
+  const steps = ['Submitted','Received','Processing','Completed'];
+  const si = steps.indexOf(r.status);
+  document.getElementById('modal-request-title').textContent = `Request ${r.id}`;
+  document.getElementById('modal-request-body').innerHTML = `
+    <div style="margin-bottom:20px">
+      <div class="progress-track">
+        ${steps.map((s,i)=>`
+          <div class="progress-step">
+            <div class="progress-dot ${i<si?'done':i===si?'active':''}">${i<si?'✓':i+1}</div>
+            <div class="progress-label">${s}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="info-grid" style="margin-bottom:16px">
+      <div class="info-item"><label>Sample Name</label><span>${r.sampleName}</span></div>
+      <div class="info-item"><label>Sample Type</label><span>${r.sampleType}</span></div>
+      <div class="info-item"><label>Analysis</label><span>${r.analysisType}</span></div>
+      <div class="info-item"><label>Quantity</label><span>${r.qty} sample(s)</span></div>
+      <div class="info-item"><label>Priority</label><span>${r.priority}</span></div>
+      <div class="info-item"><label>Submitted</label><span>${formatDate(r.createdAt)}</span></div>
+    </div>
+    ${r.notes ? `<div class="form-row"><label class="form-label">Notes</label><div style="font-size:0.875rem;color:var(--text2);line-height:1.6">${r.notes}</div></div>` : ''}
+    ${r.analystNotes ? `<div class="form-row"><label class="form-label">Analyst Notes</label><div style="font-size:0.875rem;color:var(--text2);line-height:1.6">${r.analystNotes}</div></div>` : ''}
+    ${r.reportUrl ? `<div class="form-row"><label class="form-label">Report</label><div class="report-link-box">📄 <a href="${r.reportUrl}" target="_blank">Download Report</a></div></div>` : '<div style="color:var(--text3);font-size:0.85rem;margin-top:8px">Report not yet available.</div>'}
+  `;
+  document.getElementById('modal-request-footer').innerHTML = `
+    ${r.reportUrl ? `<a href="${r.reportUrl}" target="_blank" class="btn btn-success" style="text-decoration:none;width:auto">⬇ Download Report</a>` : ''}
+    <button class="btn btn-secondary" onclick="closeModal('modal-request')">Close</button>
+  `;
+  openModal('modal-request');
+}
+
+// ── USER: SUBMIT REQUEST ─────────────────────────────────────────────────
+async function submitRequest() {
+  const sampleName = document.getElementById('req-sample-name').value.trim();
+  const sampleType = document.getElementById('req-sample-type').value;
+  const analysisType = document.getElementById('req-analysis-type').value;
+  const qty = document.getElementById('req-qty').value;
+  const priority = document.getElementById('req-priority').value;
+  const notes = document.getElementById('req-notes').value.trim();
+  if (!sampleName || !sampleType || !analysisType) {
+    showAlert('request-alert','error','Please fill in Sample Name, Type, and Analysis type.'); return;
+  }
+  setLoading('req-btn-text', true, 'Submitting...');
+  try {
+    const res = await apiPost('submitRequest', { userId: currentUser.id, userEmail: currentUser.email, userName: `${currentUser.firstName} ${currentUser.lastName}`, sampleName, sampleType, analysisType, qty, priority, notes });
+    if (res.success) {
+      showAlert('request-alert','success','Request submitted successfully!');
+      clearRequestForm();
+      setTimeout(() => { showPanel('user-dashboard'); loadUserRequests(); }, 1500);
+    } else {
+      showAlert('request-alert','error', res.message||'Failed to submit request.');
+    }
+  } catch(e) {
+    showAlert('request-alert','error',e.message);
+  }
+  setLoading('req-btn-text', false, 'Submit Request');
+}
+
+function clearRequestForm() {
+  ['req-sample-name','req-sample-type','req-analysis-type','req-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    el.value = id.includes('type') || id.includes('analysis') ? '' : '';
+  });
+  document.getElementById('req-qty').value = 1;
+  document.getElementById('req-priority').value = 'Normal';
+  document.getElementById('request-alert').classList.remove('show');
+}
+
+// ── ADMIN: DASHBOARD ─────────────────────────────────────────────────────
+async function loadAdminDashboard() {
+  showPanel('admin-dashboard');
+  const statsEl = document.getElementById('admin-stats');
+  const pendingEl = document.getElementById('admin-pending-users-table');
+  statsEl.innerHTML = '<div style="padding:10px;text-align:center"><div class="loader"></div></div>';
+  pendingEl.innerHTML = '<div style="padding:24px;text-align:center"><div class="loader"></div></div>';
+  try {
+    const [usersRes, reqsRes] = await Promise.all([
+      api('getUsers'),
+      api('getAllRequests')
+    ]);
+    const users = usersRes.users || [];
+    const reqs = reqsRes.requests || [];
+    allUsers = users;
+    allRequests = reqs;
+
+    const pending = users.filter(u=>u.status==='pending');
+    const approved = users.filter(u=>u.status==='approved'&&u.role!=='admin');
+    document.getElementById('pending-count').textContent = pending.length;
+
+    statsEl.innerHTML = `
+      <div class="stat-card c1"><div class="stat-val">${reqs.length}</div><div class="stat-label">Total Requests</div></div>
+      <div class="stat-card c2"><div class="stat-val">${reqs.filter(r=>r.status==='Submitted').length}</div><div class="stat-label">New / Submitted</div></div>
+      <div class="stat-card c3"><div class="stat-val">${reqs.filter(r=>r.status==='Processing').length}</div><div class="stat-label">Processing</div></div>
+      <div class="stat-card c4"><div class="stat-val">${approved.length}</div><div class="stat-label">Active Users</div></div>
+    `;
+
+    if (!pending.length) {
+      pendingEl.innerHTML = '<div class="empty-state"><div class="empty-icon">✓</div><div class="empty-text">No pending approvals</div></div>';
+    } else {
+      pendingEl.innerHTML = `<table>
+        <thead><tr><th>Name</th><th>Email</th><th>Organization</th><th>Department</th><th>Phone</th><th>Requested</th><th>Actions</th></tr></thead>
+        <tbody>
+        ${pending.map(u=>`
+          <tr>
+            <td class="td-primary">${u.firstName} ${u.lastName}</td>
+            <td class="td-mono">${u.email}</td>
+            <td>${u.org||'—'}</td>
+            <td>${u.dept||'—'}</td>
+            <td>${u.phone||'—'}</td>
+            <td class="td-mono">${formatDate(u.createdAt)}</td>
+            <td class="td-actions">
+              <div class="inline-actions">
+                <button class="btn btn-success btn-sm" onclick="approveUser('${u.id}','approve')">✓ Approve</button>
+                <button class="btn btn-danger btn-sm" onclick="approveUser('${u.id}','reject')">✕ Reject</button>
+              </div>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+    }
+  } catch(e) {
+    statsEl.innerHTML = `<div style="color:var(--danger);font-size:0.85rem;padding:10px">${e.message}</div>`;
+  }
+}
+
+async function approveUser(userId, action) {
+  try {
+    const res = await apiPost('updateUserStatus', { userId, status: action === 'approve' ? 'approved' : 'rejected' });
+    if (res.success) loadAdminDashboard();
+    else alert(res.message);
+  } catch(e) { alert(e.message); }
+}
+
+// ── ADMIN: REQUESTS ───────────────────────────────────────────────────────
+async function loadAdminRequests() {
+  showPanel('admin-requests');
+  const tbl = document.getElementById('admin-requests-table');
+  tbl.innerHTML = '<div style="padding:24px;text-align:center"><div class="loader"></div></div>';
+  try {
+    const res = await api('getAllRequests');
+    allRequests = res.requests || [];
+    renderAdminRequests(allRequests);
+  } catch(e) {
+    tbl.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><div class="empty-text">${e.message}</div></div>`;
+  }
+}
+
+function filterRequests() {
+  const filter = document.getElementById('filter-status').value;
+  renderAdminRequests(filter ? allRequests.filter(r=>r.status===filter) : allRequests);
+}
+
+function renderAdminRequests(reqs) {
+  const tbl = document.getElementById('admin-requests-table');
+  if (!reqs.length) {
+    tbl.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No requests found</div></div>';
+    return;
+  }
+  tbl.innerHTML = `<table>
+    <thead><tr><th>ID</th><th>User</th><th>Sample</th><th>Analysis</th><th>Priority</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>
+    ${reqs.map(r=>`
+      <tr>
+        <td class="td-mono">${r.id}</td>
+        <td>${r.userName||r.userEmail}</td>
+        <td class="td-primary">${r.sampleName}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.8rem">${r.analysisType}</td>
+        <td><span style="${priorityStyle(r.priority)};font-size:0.75rem;padding:2px 8px;border-radius:12px">${r.priority}</span></td>
+        <td class="td-mono">${formatDate(r.createdAt)}</td>
+        <td>
+          <select class="select-sm" onchange="updateStatus('${r.id}',this.value)">
+            ${['Submitted','Received','Processing','Completed'].map(s=>`<option ${s===r.status?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </td>
+        <td class="td-actions">
+          <div class="inline-actions">
+            <button class="btn btn-secondary btn-sm" onclick="adminViewRequest('${r.id}')">Detail</button>
+            <button class="btn btn-primary btn-sm" onclick="openUploadModal('${r.id}')">📄 Report</button>
+          </div>
+        </td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+async function updateStatus(requestId, status) {
+  try {
+    const res = await apiPost('updateRequestStatus', { requestId, status });
+    if (!res.success) { alert(res.message||'Failed to update status'); loadAdminRequests(); }
+    else {
+      const r = allRequests.find(x=>x.id===requestId);
+      if(r) r.status = status;
+    }
+  } catch(e) { alert(e.message); }
+}
+
+function openUploadModal(requestId) {
+  document.getElementById('upload-request-id').value = requestId;
+  document.getElementById('upload-report-url').value = '';
+  document.getElementById('upload-notes').value = '';
+  document.getElementById('upload-alert').classList.remove('show');
+  openModal('modal-upload');
+}
+
+async function submitReport() {
+  const requestId = document.getElementById('upload-request-id').value;
+  const reportUrl = document.getElementById('upload-report-url').value.trim();
+  const notes = document.getElementById('upload-notes').value.trim();
+  if (!reportUrl) { showAlert('upload-alert','error','Please enter the report URL.'); return; }
+  setLoading('upload-btn-text', true, 'Uploading...');
+  try {
+    const res = await apiPost('uploadReport', { requestId, reportUrl, analystNotes: notes });
+    if (res.success) {
+      closeModal('modal-upload');
+      loadAdminRequests();
+    } else {
+      showAlert('upload-alert','error',res.message||'Failed to upload report.');
+    }
+  } catch(e) {
+    showAlert('upload-alert','error',e.message);
+  }
+  setLoading('upload-btn-text', false, 'Upload & Complete');
+}
+
+function adminViewRequest(id) {
+  const r = allRequests.find(x=>x.id===id);
+  if(!r) return;
+  document.getElementById('modal-request-title').textContent = `Request ${r.id}`;
+  document.getElementById('modal-request-body').innerHTML = `
+    <div class="info-grid" style="margin-bottom:16px">
+      <div class="info-item"><label>User</label><span>${r.userName}</span></div>
+      <div class="info-item"><label>Email</label><span>${r.userEmail}</span></div>
+      <div class="info-item"><label>Sample Name</label><span>${r.sampleName}</span></div>
+      <div class="info-item"><label>Sample Type</label><span>${r.sampleType}</span></div>
+      <div class="info-item"><label>Quantity</label><span>${r.qty}</span></div>
+      <div class="info-item"><label>Priority</label><span>${r.priority}</span></div>
+      <div class="info-item"><label>Status</label><span>${statusBadge(r.status)}</span></div>
+      <div class="info-item"><label>Submitted</label><span>${formatDate(r.createdAt)}</span></div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px"><label class="form-label">Analysis Required</label><div style="color:var(--text);font-size:0.9rem">${r.analysisType}</div></div>
+    ${r.notes?`<div class="form-row"><label class="form-label">Sample Notes</label><div style="color:var(--text2);font-size:0.875rem;line-height:1.6">${r.notes}</div></div>`:''}
+    ${r.reportUrl?`<div class="form-row" style="margin-top:12px"><label class="form-label">Report</label><div class="report-link-box">📄 <a href="${r.reportUrl}" target="_blank">View Report</a></div></div>`:''}
+    ${r.analystNotes?`<div class="form-row" style="margin-top:12px"><label class="form-label">Analyst Notes</label><div style="color:var(--text2);font-size:0.875rem;line-height:1.6">${r.analystNotes}</div></div>`:''}
+  `;
+  document.getElementById('modal-request-footer').innerHTML = `
+    <button class="btn btn-primary" style="width:auto" onclick="closeModal('modal-request');openUploadModal('${r.id}')">📄 Upload Report</button>
+    <button class="btn btn-secondary" onclick="closeModal('modal-request')">Close</button>
+  `;
+  openModal('modal-request');
+}
+
+// ── ADMIN: USERS ──────────────────────────────────────────────────────────
+async function loadAdminUsers() {
+  showPanel('admin-users');
+  const tbl = document.getElementById('admin-users-table');
+  tbl.innerHTML = '<div style="padding:24px;text-align:center"><div class="loader"></div></div>';
+  try {
+    const res = await api('getUsers');
+    const users = res.users || [];
+    if (!users.length) {
+      tbl.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">No users registered yet</div></div>';
+      return;
+    }
+    tbl.innerHTML = `<table>
+      <thead><tr><th>Name</th><th>Email</th><th>Organization</th><th>Department</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
+      <tbody>
+      ${users.map(u=>`
+        <tr>
+          <td class="td-primary">${u.firstName} ${u.lastName}</td>
+          <td class="td-mono">${u.email}</td>
+          <td>${u.org||'—'}</td>
+          <td>${u.dept||'—'}</td>
+          <td><span class="topbar-badge ${u.role==='admin'?'badge-admin':'badge-user'}">${u.role}</span></td>
+          <td>${statusBadge(u.status)}</td>
+          <td class="td-mono">${formatDate(u.createdAt)}</td>
+          <td class="td-actions">
+            ${u.role!=='admin'?`<div class="inline-actions">
+              ${u.status==='pending'?`<button class="btn btn-success btn-sm" onclick="approveUser('${u.id}','approve')">Approve</button>`:''}
+              ${u.status==='approved'?`<button class="btn btn-danger btn-sm" onclick="approveUser('${u.id}','reject')">Suspend</button>`:''}
+              ${u.status==='rejected'?`<button class="btn btn-success btn-sm" onclick="approveUser('${u.id}','approve')">Restore</button>`:''}
+            </div>`:'—'}
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  } catch(e) {
+    tbl.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><div class="empty-text">${e.message}</div></div>`;
+  }
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────
+function statusBadge(s) {
+  const map = {
+    'pending':'pending','approved':'approved','rejected':'rejected',
+    'Submitted':'submitted','Received':'received','Processing':'processing','Completed':'completed'
+  };
+  return `<span class="status status-${map[s]||'pending'}">${s}</span>`;
+}
+
+function priorityStyle(p) {
+  const c = {Normal:'var(--text3)',Urgent:'var(--warning)',Rush:'var(--danger)'}[p]||'var(--text3)';
+  return `color:${c};font-weight:500`;
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (isNaN(dt)) return d;
+  return dt.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
+}
+
+function showAlert(id, type, msg) {
+  const el = document.getElementById(id);
+  el.className = `alert alert-${type} show`;
+  el.textContent = msg;
+}
+
+function setLoading(id, loading, text) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  if(loading) {
+    el.innerHTML = `<span class="loader"></span> ${text}`;
+  } else {
+    el.textContent = text;
+  }
+}
+
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if(e.target === o) o.classList.remove('show'); });
+});
+</script>
+</body>
+</html>
