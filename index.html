@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -928,17 +929,14 @@ tr:hover td{background:rgba(255,255,255,.02)}
           <div class="p-card-sub">Sign in to your ADC account</div>
         </div>
         <div class="p-card-body">
-          <div class="setup-banner" id="setup-box">
-            <h4>⚙️ One-Time Setup — Connect Your Database</h4>
-            <p>Paste your Google Apps Script Web App URL below to connect the database:</p>
+          <div class="setup-banner" id="setup-banner" style="display:none">
+            <h4>⚙️ Connect Your Database First</h4>
+            <p>Paste your Google Apps Script Web App URL below, then click Test Connection:</p>
             <div class="setup-row">
-              <input type="text" class="fi" id="script-url-input" placeholder="https://script.google.com/macros/s/...long-id.../exec" style="font-size:.76rem">
-              <button class="btn btn-teal btn-sm" style="white-space:nowrap" onclick="saveScriptUrl()">Connect</button>
+              <input type="text" class="fi" id="url-field" placeholder="https://script.google.com/macros/s/.../exec" style="font-size:.76rem">
+              <button class="btn btn-teal btn-sm" id="test-btn" style="white-space:nowrap" onclick="testConnection()">Test Connection</button>
             </div>
-            <p style="font-size:.7rem;color:#92400e;margin-top:6px">Get this URL from: Apps Script → Deploy → Manage Deployments → Copy Web App URL</p>
-          </div>
-          <div style="text-align:right;margin-bottom:8px">
-            <a id="change-url-link" href="#" onclick="changeScriptUrl();return false;" style="font-size:.72rem;color:var(--teal);display:none">⚙ Change Script URL</a>
+            <div id="test-msg" style="display:none"></div>
           </div>
           <div class="fr"><label class="fl">Email Address</label><input type="email" class="fi" id="login-email" placeholder="you@example.com"></div>
           <div class="fr"><label class="fl">Password</label><input type="password" class="fi" id="login-password" placeholder="••••••••"></div>
@@ -1186,311 +1184,555 @@ tr:hover td{background:rgba(255,255,255,.02)}
 <!-- ════════════════════════════════════════════════════════
      SCRIPT
 ════════════════════════════════════════════════════════ -->
+<!-- MODALS -->
+<div class="modal-ov" id="modal-req"><div class="modal"><div class="modal-hd"><span class="modal-title" id="mr-title">Request Detail</span><button class="modal-x" onclick="closeM('modal-req')">✕</button></div><div class="modal-bd" id="mr-body"></div><div class="modal-ft" id="mr-ft"></div></div></div>
+<div class="modal-ov" id="modal-upload"><div class="modal"><div class="modal-hd"><span class="modal-title">📄 Upload Report</span><button class="modal-x" onclick="closeM('modal-upload')">✕</button></div><div class="modal-bd"><input type="hidden" id="up-rid"><div class="fr"><label class="fl">Report Link (Google Drive URL)</label><input type="url" class="fi" id="up-url" placeholder="https://drive.google.com/file/d/..."><p style="font-size:.74rem;color:rgba(255,255,255,.35);margin-top:5px">Upload PDF to Google Drive → Share → Anyone with link → paste URL here.</p></div><div class="fr"><label class="fl">Analyst Notes (optional)</label><textarea class="ft" id="up-notes" placeholder="Summary of findings..."></textarea></div><div id="up-alert" class="modal-alert"></div></div><div class="modal-ft"><button class="btn btn-a-ghost" onclick="closeM('modal-upload')">Cancel</button><button class="btn btn-a-teal" onclick="submitReport()"><span id="up-btn">Upload & Complete</span></button></div></div></div>
+
 <script>
-// ── CONFIG ──────────────────────────────────────────────────
-// PASTE YOUR APPS SCRIPT URL BETWEEN THE QUOTES ON THE NEXT LINE:
-const HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbz_okaLF5fZ3LEBVUWNp-CrMi1ldS9tFJq25DYkcCKPPiKmGYhl47JMCMJEDh4ZaTiA/exec'; // 
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  STEP 1: PASTE YOUR APPS SCRIPT URL BETWEEN THE QUOTES BELOW ║
+// ║  After deploying Code.gs, copy its /exec URL and paste here  ║
+// ╚══════════════════════════════════════════════════════════════╝
+// ✅ YOUR APPS SCRIPT URL IS SET BELOW — DO NOT CHANGE UNLESS YOU REDEPLOY
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyGI0lw8b0clJSZzQbhOLEWuR1woTogXwYgFCVwMWg7FuBae6Dy_O8qks8Pbv20advW/exec';
 
-let SURL = HARDCODED_URL || localStorage.getItem('adc_surl') || '';
-let CU = null, ALL_R = [], ALL_U = [];
+// ── state ──────────────────────────────────────────────────────
+var CU = null, ALL_R = [], ALL_U = [];
 
-function saveScriptUrl(){
-  const v = document.getElementById('script-url-input').value.trim();
-  if(!v.startsWith('https://script.google.com')){
-    showPA('login-alert','pa-err','❌ Invalid URL. Must start with https://script.google.com');
-    return;
-  }
-  SURL = v;
-  localStorage.setItem('adc_surl', v);
-  document.getElementById('setup-box').style.display = 'none';
-  document.getElementById('change-url-link').style.display = 'inline';
-  showPA('login-alert','pa-ok','✅ Script URL saved! You can now sign in.');
-}
-
-function changeScriptUrl(){
-  document.getElementById('setup-box').style.display = 'block';
-  document.getElementById('script-url-input').value = SURL;
-  document.getElementById('change-url-link').style.display = 'none';
-}
-
-window.addEventListener('load', () => {
-  const saved = localStorage.getItem('adc_surl');
-  if(HARDCODED_URL){
-    // URL is hardcoded — hide setup box entirely
-    document.getElementById('setup-box').style.display = 'none';
-    document.getElementById('change-url-link').style.display = 'none';
-  } else if(saved){
-    // URL was previously saved in browser
-    SURL = saved;
-    document.getElementById('script-url-input').value = saved;
-    document.getElementById('setup-box').style.display = 'none';
-    document.getElementById('change-url-link').style.display = 'inline';
-  } else {
-    // First time — show setup box
-    document.getElementById('setup-box').style.display = 'block';
-    document.getElementById('change-url-link').style.display = 'none';
-  }
-  const s = sessionStorage.getItem('adc_cu');
-  if(s){ CU = JSON.parse(s); enterApp(); }
+// ── on load ────────────────────────────────────────────────────
+window.addEventListener('load', function() {
+  // URL is hardcoded above — always hide the setup banner
+  var banner = document.getElementById('setup-banner');
+  if (banner) banner.style.display = 'none';
+  // Restore session if user was previously logged in
+  try {
+    var s = sessionStorage.getItem('adc_session');
+    if (s) { CU = JSON.parse(s); enterApp(); }
+  } catch(e) {}
 });
 
-function toggleMobileMenu(){}
-function heroCnicFocus(){document.getElementById('hero-cnic').scrollIntoView({behavior:'smooth'});document.getElementById('hero-cnic').focus();}
-
-// ── API ──────────────────────────────────────────────────────
-async function api(action,data={}){
-  if(!SURL)throw new Error('Script URL not configured. Please add it in the setup box.');
-  const r=await fetch(`${SURL}?action=${action}&${new URLSearchParams(data)}`);
-  if(!r.ok)throw new Error('Network error ('+r.status+')');return r.json();
-}
-async function apiP(action,data={}){
-  if(!SURL)throw new Error('Script URL not configured.');
-  const r=await fetch(SURL,{method:'POST',body:JSON.stringify({action,...data}),headers:{'Content-Type':'text/plain'}});
-  if(!r.ok)throw new Error('Network error');return r.json();
+// ── API calls ──────────────────────────────────────────────────
+function getUrl() {
+  // Priority: hardcoded → input field
+  if (SCRIPT_URL && SCRIPT_URL.trim() !== '') return SCRIPT_URL.trim();
+  var inp = document.getElementById('url-field');
+  if (inp && inp.value.trim() !== '') return inp.value.trim();
+  return null;
 }
 
-// ── AUTH ─────────────────────────────────────────────────────
-async function handleLogin(){
-  const em=document.getElementById('login-email').value.trim();
-  const pw=document.getElementById('login-password').value;
-  if(!em||!pw){showPA('login-alert','pa-err','Please fill in all fields.');return;}
-  setL('login-btn',true,'Signing in…');
-  try{
-    const r=await api('login',{email:em,password:pw});
-    if(r.success){CU=r.user;sessionStorage.setItem('adc_cu',JSON.stringify(CU));enterApp();}
-    else showPA('login-alert','pa-err',r.message||'Invalid credentials.');
-  }catch(e){showPA('login-alert','pa-err',e.message);}
-  setL('login-btn',false,'Sign In to Portal');
+async function apiGet(action, params) {
+  params = params || {};
+  var url = getUrl();
+  if (!url) throw new Error('No Script URL set. Please paste your Apps Script URL in the setup box above.');
+  var qs = Object.keys(params).map(function(k){ return encodeURIComponent(k)+'='+encodeURIComponent(params[k]); }).join('&');
+  var fullUrl = url + '?action=' + encodeURIComponent(action) + (qs ? '&'+qs : '');
+  var resp = await fetch(fullUrl);
+  if (!resp.ok) throw new Error('HTTP ' + resp.status + ' — check your Script URL and deployment settings');
+  return resp.json();
 }
 
-async function handleSignup(){
-  const fn=document.getElementById('s-fn').value.trim(),ln=document.getElementById('s-ln').value.trim();
-  const em=document.getElementById('s-em').value.trim(),cn=document.getElementById('s-cn').value.trim();
-  const or=document.getElementById('s-or').value.trim(),ph=document.getElementById('s-ph').value.trim();
-  const pw=document.getElementById('s-pw').value,cf=document.getElementById('s-cf').value;
-  if(!fn||!ln||!em||!cn||!pw){showPA('signup-alert','pa-err','Name, email, CNIC & password are required.');return;}
-  if(pw!==cf){showPA('signup-alert','pa-err','Passwords do not match.');return;}
-  if(pw.length<6){showPA('signup-alert','pa-err','Password must be at least 6 characters.');return;}
-  setL('signup-btn',true,'Submitting…');
-  try{
-    const r=await apiP('signup',{firstName:fn,lastName:ln,email:em,cnic:cn,org:or,phone:ph,password:pw});
-    if(r.success)showPA('signup-alert','pa-ok','Account request submitted! Admin will review and approve shortly.');
-    else showPA('signup-alert','pa-err',r.message||'Signup failed.');
-  }catch(e){showPA('signup-alert','pa-err',e.message);}
-  setL('signup-btn',false,'Request Account');
+async function apiPost(action, data) {
+  data = data || {};
+  var url = getUrl();
+  if (!url) throw new Error('No Script URL set. Please paste your Apps Script URL in the setup box above.');
+  data.action = action;
+  var resp = await fetch(url, {
+    method: 'POST',
+    body: JSON.stringify(data),
+    headers: { 'Content-Type': 'text/plain' }
+  });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  return resp.json();
 }
 
-// ── APP ──────────────────────────────────────────────────────
-function enterApp(){
+// ── test connection ─────────────────────────────────────────────
+async function testConnection() {
+  var btn = document.getElementById('test-btn');
+  var msg = document.getElementById('test-msg');
+  btn.textContent = 'Testing...';
+  msg.style.display = 'none';
+  try {
+    var r = await apiGet('ping');
+    if (r.ok || r.success) {
+      msg.textContent = '✅ Connected! Backend is live. You can now login below.';
+      msg.style.cssText = 'display:block;padding:8px 12px;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:8px;font-size:.82rem;margin-top:8px';
+      // Save URL to use in login
+      var inp = document.getElementById('url-field');
+      if (inp && inp.value.trim()) SCRIPT_URL = inp.value.trim();
+    } else {
+      throw new Error(r.msg || r.message || 'Backend returned error');
+    }
+  } catch(e) {
+    msg.textContent = '❌ Failed: ' + e.message;
+    msg.style.cssText = 'display:block;padding:8px 12px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:8px;font-size:.82rem;margin-top:8px';
+  }
+  btn.textContent = 'Test Connection';
+}
+
+// ── AUTH ────────────────────────────────────────────────────────
+async function handleLogin() {
+  var em = document.getElementById('login-email').value.trim();
+  var pw = document.getElementById('login-password').value.trim();
+  if (!em || !pw) { showPA('login-alert','pa-err','Enter email and password.'); return; }
+  setL('login-btn', true, 'Signing in...');
+  try {
+    var r = await apiGet('login', { email: em, password: pw });
+    if (r.success) {
+      CU = r.user;
+      sessionStorage.setItem('adc_session', JSON.stringify(CU));
+      enterApp();
+    } else {
+      showPA('login-alert', 'pa-err', r.message || 'Wrong email or password.');
+    }
+  } catch(e) {
+    showPA('login-alert', 'pa-err', e.message);
+  }
+  setL('login-btn', false, 'Sign In to Portal');
+}
+
+async function handleSignup() {
+  var fn=document.getElementById('s-fn').value.trim(), ln=document.getElementById('s-ln').value.trim();
+  var em=document.getElementById('s-em').value.trim(), cn=document.getElementById('s-cn').value.trim();
+  var or_=document.getElementById('s-or').value.trim(), ph=document.getElementById('s-ph').value.trim();
+  var pw=document.getElementById('s-pw').value, cf=document.getElementById('s-cf').value;
+  if (!fn||!ln||!em||!cn||!pw) { showPA('signup-alert','pa-err','All fields with * are required.'); return; }
+  if (pw !== cf) { showPA('signup-alert','pa-err','Passwords do not match.'); return; }
+  if (pw.length < 6) { showPA('signup-alert','pa-err','Password must be at least 6 characters.'); return; }
+  setL('signup-btn', true, 'Submitting...');
+  try {
+    var r = await apiPost('signup', {firstName:fn, lastName:ln, email:em, cnic:cn, org:or_, phone:ph, password:pw});
+    if (r.success) showPA('signup-alert','pa-ok','✅ Account submitted! Admin will approve shortly.');
+    else showPA('signup-alert','pa-err', r.message || 'Signup failed.');
+  } catch(e) {
+    showPA('signup-alert','pa-err', e.message);
+  }
+  setL('signup-btn', false, 'Request Account');
+}
+
+// ── APP ENTRY ───────────────────────────────────────────────────
+function enterApp() {
   document.getElementById('landing-page').classList.remove('active');
   document.getElementById('app-page').classList.add('active');
-  const ini=((CU.firstName||'?')[0]+(CU.lastName||'?')[0]).toUpperCase();
-  document.getElementById('u-ava').textContent=ini;
-  document.getElementById('u-nm').textContent=`${CU.firstName} ${CU.lastName}`;
-  if(CU.role==='admin'){
-    document.getElementById('role-tag').textContent='Administrator';document.getElementById('role-tag').className='rtag r-admin';
-    buildNav([{id:'a-dash',label:'Dashboard',fn:loadADash},{id:'a-reqs',label:'Requests',fn:loadAReqs},{id:'a-walkin',label:'🚶 Walk-in',fn:()=>showP('a-walkin')},{id:'a-cnic',label:'CNIC History',fn:()=>showP('a-cnic')},{id:'a-users',label:'Users',fn:loadAUsers}]);
-    showP('a-dash');loadADash();
-  }else if(CU.status==='pending'){
-    document.getElementById('role-tag').textContent='Pending';document.getElementById('role-tag').className='rtag r-pend';
-    document.getElementById('tb-nav').innerHTML='';showP('pending');
-  }else{
-    document.getElementById('role-tag').textContent='Researcher / Patient';document.getElementById('role-tag').className='rtag r-user';
-    buildNav([{id:'u-dash',label:'My Requests',fn:loadUReqs},{id:'u-new',label:'+ New Request',fn:()=>showP('u-new')}]);
-    showP('u-dash');loadUReqs();
+  var ini = ((CU.firstName||'?')[0] + (CU.lastName||'?')[0]).toUpperCase();
+  document.getElementById('u-ava').textContent = ini;
+  document.getElementById('u-nm').textContent = CU.firstName + ' ' + CU.lastName;
+
+  if (CU.role === 'admin') {
+    document.getElementById('role-tag').textContent = 'Administrator';
+    document.getElementById('role-tag').className = 'rtag r-admin';
+    buildNav([
+      {id:'a-dash',   label:'Dashboard',     fn: loadADash},
+      {id:'a-reqs',   label:'Requests',      fn: loadAReqs},
+      {id:'a-walkin', label:'🚶 Walk-in',    fn: function(){ showP('a-walkin'); }},
+      {id:'a-cnic',   label:'CNIC History',  fn: function(){ showP('a-cnic'); }},
+      {id:'a-users',  label:'Users',         fn: loadAUsers}
+    ]);
+    showP('a-dash'); loadADash();
+  } else if (CU.status === 'pending') {
+    document.getElementById('role-tag').textContent = 'Pending';
+    document.getElementById('role-tag').className = 'rtag r-pend';
+    document.getElementById('tb-nav').innerHTML = '';
+    showP('pending');
+  } else {
+    document.getElementById('role-tag').textContent = 'Patient / Researcher';
+    document.getElementById('role-tag').className = 'rtag r-user';
+    buildNav([
+      {id:'u-dash', label:'My Requests',  fn: loadUReqs},
+      {id:'u-new',  label:'+ New Request',fn: function(){ showP('u-new'); }}
+    ]);
+    showP('u-dash'); loadUReqs();
   }
 }
-function buildNav(items){document.getElementById('tb-nav').innerHTML=items.map(i=>`<button class="nb" id="nb-${i.id}">${i.label}</button>`).join('');items.forEach(i=>{document.getElementById(`nb-${i.id}`).onclick=()=>{showP(i.id);if(i.fn)i.fn();};});}
-function showP(id){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.getElementById(`panel-${id}`)?.classList.add('active');document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));document.getElementById(`nb-${id}`)?.classList.add('active');}
-function handleLogout(){CU=null;sessionStorage.removeItem('adc_cu');location.reload();}
 
-// ── USER REQUESTS ─────────────────────────────────────────────
-async function loadUReqs(){
-  showP('u-dash');const t=document.getElementById('u-reqs-tbl');t.innerHTML=ld();
-  try{
-    const r=await api('getMyRequests',{userId:CU.id});ALL_R=r.requests||[];
-    const tot=ALL_R.length,sub=ALL_R.filter(x=>x.status==='Submitted').length,proc=ALL_R.filter(x=>['Received','Processing'].includes(x.status)).length,done=ALL_R.filter(x=>x.status==='Completed').length;
-    document.getElementById('u-stats').innerHTML=`
-      <div class="as"><div class="as-glow" style="background:var(--teal)"></div><div class="as-ico">📋</div><div class="as-val">${tot}</div><div class="as-lbl">Total</div></div>
-      <div class="as"><div class="as-glow" style="background:var(--sky)"></div><div class="as-ico">📤</div><div class="as-val">${sub}</div><div class="as-lbl">Submitted</div></div>
-      <div class="as"><div class="as-glow" style="background:#6c63ff"></div><div class="as-ico">⚗️</div><div class="as-val">${proc}</div><div class="as-lbl">In Progress</div></div>
-      <div class="as"><div class="as-glow" style="background:var(--teal)"></div><div class="as-ico">✅</div><div class="as-val">${done}</div><div class="as-lbl">Completed</div></div>`;
-    if(!ALL_R.length){t.innerHTML=mt('🔬','No requests yet. Submit your first analysis request!');return;}
-    t.innerHTML=`<table><thead><tr><th>Request ID</th><th>Sample</th><th>Analysis</th><th>Priority</th><th>Date</th><th>Status</th><th></th></tr></thead><tbody>
-    ${ALL_R.map(r=>`<tr><td class="td-m">${r.id}</td><td class="td-p">${r.sampleName}</td><td><span class="atag">${r.analysisType}</span></td><td class="${pcls(r.priority)}">${r.priority}</td><td class="td-m">${fd(r.createdAt)}</td><td>${sb(r.status)}</td><td class="td-a"><div class="ia"><button class="btn btn-a-ghost btn-xs" onclick="viewUReq('${r.id}')">Detail</button>${r.reportUrl?`<a href="${r.reportUrl}" target="_blank" class="btn btn-a-ssft btn-xs" style="text-decoration:none">⬇ Report</a>`:''}</div></td></tr>`).join('')}
-    </tbody></table>`;
-  }catch(e){t.innerHTML=et(e.message);}
+function buildNav(items) {
+  document.getElementById('tb-nav').innerHTML = items.map(function(i){
+    return '<button class="nb" id="nb-'+i.id+'">'+i.label+'</button>';
+  }).join('');
+  items.forEach(function(i) {
+    document.getElementById('nb-'+i.id).onclick = function() {
+      showP(i.id); if (i.fn) i.fn();
+    };
+  });
 }
 
-function viewUReq(id){
-  const r=ALL_R.find(x=>x.id===id);if(!r)return;
-  const steps=['Submitted','Received','Processing','Completed'],si=steps.indexOf(r.status);
-  document.getElementById('mr-title').textContent=`Request ${r.id}`;
-  document.getElementById('mr-body').innerHTML=`
-    <div class="ptrack">${steps.map((s,i)=>`<div class="pstep"><div class="pdot ${i<si?'done':i===si?'active':''}">${i<si?'✓':i+1}</div><div class="plbl">${s}</div></div>`).join('')}</div>
-    <div class="info-grid" style="margin-bottom:14px">
-      <div class="ii"><label>Sample</label><span>${r.sampleName}</span></div><div class="ii"><label>Type</label><span>${r.sampleType}</span></div>
-      <div class="ii"><label>Analysis</label><span>${r.analysisType}</span></div><div class="ii"><label>Qty</label><span>${r.qty}</span></div>
-      <div class="ii"><label>Priority</label><span class="${pcls(r.priority)}">${r.priority}</span></div><div class="ii"><label>Date</label><span>${fd(r.createdAt)}</span></div>
-    </div>
-    ${r.notes?`<div class="fr"><label class="fl">Notes</label><p style="font-size:.86rem;color:rgba(255,255,255,.55);line-height:1.7">${r.notes}</p></div>`:''}
-    ${r.analystNotes?`<div class="fr"><label class="fl">Analyst Notes</label><p style="font-size:.86rem;color:rgba(255,255,255,.55);line-height:1.7">${r.analystNotes}</p></div>`:''}
-    ${r.reportUrl?`<div class="fr"><label class="fl">Report</label><div class="rbox">📄 <a href="${r.reportUrl}" target="_blank">Download Report</a></div></div>`:'<p style="color:rgba(255,255,255,.3);font-size:.82rem;margin-top:8px">Report not yet available.</p>'}`;
-  document.getElementById('mr-ft').innerHTML=`${r.reportUrl?`<a href="${r.reportUrl}" target="_blank" class="btn btn-a-ssft" style="text-decoration:none">⬇ Download Report</a>`:''}<button class="btn btn-a-ghost" onclick="closeM('modal-req')">Close</button>`;
+function showP(id) {
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+  var el = document.getElementById('panel-'+id);
+  if (el) el.classList.add('active');
+  document.querySelectorAll('.nb').forEach(function(b){ b.classList.remove('active'); });
+  var nb = document.getElementById('nb-'+id);
+  if (nb) nb.classList.add('active');
+}
+
+function handleLogout() {
+  CU = null; ALL_R = []; ALL_U = [];
+  sessionStorage.removeItem('adc_session');
+  location.reload();
+}
+
+// ── USER REQUESTS ───────────────────────────────────────────────
+async function loadUReqs() {
+  showP('u-dash');
+  var t = document.getElementById('u-reqs-tbl');
+  t.innerHTML = ld();
+  try {
+    var r = await apiGet('getMyRequests', {userId: CU.id});
+    ALL_R = r.requests || [];
+    var tot=ALL_R.length, sub=ALL_R.filter(function(x){return x.status==='Submitted';}).length,
+        proc=ALL_R.filter(function(x){return x.status==='Received'||x.status==='Processing';}).length,
+        done=ALL_R.filter(function(x){return x.status==='Completed';}).length;
+    document.getElementById('u-stats').innerHTML =
+      astat('📋', tot,  'Total', 'var(--teal)') +
+      astat('📤', sub,  'Submitted', 'var(--sky)') +
+      astat('⚗️', proc, 'In Progress', '#6c63ff') +
+      astat('✅', done, 'Completed', 'var(--teal)');
+    if (!ALL_R.length) { t.innerHTML = mt('🔬','No requests yet. Submit your first analysis request!'); return; }
+    t.innerHTML = '<table><thead><tr><th>Request ID</th><th>Sample</th><th>Analysis</th><th>Priority</th><th>Date</th><th>Status</th><th></th></tr></thead><tbody>' +
+      ALL_R.map(function(r){
+        return '<tr><td class="td-m">'+r.id+'</td><td class="td-p">'+r.sampleName+'</td><td><span class="atag">'+r.analysisType+'</span></td><td class="'+pcls(r.priority)+'">'+r.priority+'</td><td class="td-m">'+fd(r.createdAt)+'</td><td>'+sb(r.status)+'</td><td class="td-a"><div class="ia"><button class="btn btn-a-ghost btn-xs" onclick="viewUReq(\''+r.id+'\')">Detail</button>'+(r.reportUrl?'<a href="'+r.reportUrl+'" target="_blank" class="btn btn-a-ssft btn-xs" style="text-decoration:none">⬇ Report</a>':'')+'</div></td></tr>';
+      }).join('') +
+    '</tbody></table>';
+  } catch(e) { t.innerHTML = et(e.message); }
+}
+
+function viewUReq(id) {
+  var r = ALL_R.find(function(x){return x.id===id;});
+  if (!r) return;
+  var steps = ['Submitted','Received','Processing','Completed'];
+  var si = steps.indexOf(r.status);
+  document.getElementById('mr-title').textContent = 'Request ' + r.id;
+  document.getElementById('mr-body').innerHTML =
+    '<div class="ptrack">' + steps.map(function(s,i){
+      return '<div class="pstep"><div class="pdot '+(i<si?'done':i===si?'active':'')+'">'+(i<si?'✓':i+1)+'</div><div class="plbl">'+s+'</div></div>';
+    }).join('') + '</div>' +
+    '<div class="info-grid" style="margin-bottom:14px">' +
+    ii('Sample', r.sampleName) + ii('Type', r.sampleType) +
+    ii('Analysis', r.analysisType) + ii('Priority', r.priority) +
+    ii('Date', fd(r.createdAt)) + ii('Status', sb(r.status)) +
+    '</div>' +
+    (r.notes ? '<div class="fr"><label class="fl">Notes</label><p style="font-size:.85rem;color:rgba(255,255,255,.55);line-height:1.7">'+r.notes+'</p></div>' : '') +
+    (r.analystNotes ? '<div class="fr"><label class="fl">Analyst Notes</label><p style="font-size:.85rem;color:rgba(255,255,255,.55);line-height:1.7">'+r.analystNotes+'</p></div>' : '') +
+    (r.reportUrl ? '<div class="fr"><label class="fl">Report</label><div class="rbox">📄 <a href="'+r.reportUrl+'" target="_blank">Download Report</a></div></div>' : '<p style="color:rgba(255,255,255,.3);font-size:.82rem;margin-top:8px">Report not available yet.</p>');
+  document.getElementById('mr-ft').innerHTML =
+    (r.reportUrl ? '<a href="'+r.reportUrl+'" target="_blank" class="btn btn-a-ssft" style="text-decoration:none">⬇ Download Report</a>' : '') +
+    '<button class="btn btn-a-ghost" onclick="closeM(\'modal-req\')">Close</button>';
   openM('modal-req');
 }
 
-async function submitReq(){
-  const sn=document.getElementById('r-sn').value.trim(),st=document.getElementById('r-st').value,at=document.getElementById('r-at').value;
-  if(!sn||!st||!at){showPA('req-alert','pa-err','Sample name, type, and analysis are required.');return;}
-  setL('req-btn',true,'Submitting…');
-  try{
-    const r=await apiP('submitRequest',{userId:CU.id,userEmail:CU.email,userName:`${CU.firstName} ${CU.lastName}`,cnic:CU.cnic||'',sampleName:sn,sampleType:st,analysisType:at,qty:document.getElementById('r-qt').value,priority:document.getElementById('r-pr').value,expectedDate:document.getElementById('r-dt').value,notes:document.getElementById('r-nt').value.trim(),source:'Online'});
-    if(r.success){showPA('req-alert','pa-ok','Request submitted!');clearReqF();setTimeout(()=>{showP('u-dash');loadUReqs();},1500);}
-    else showPA('req-alert','pa-err',r.message||'Failed.');
-  }catch(e){showPA('req-alert','pa-err',e.message);}
-  setL('req-btn',false,'Submit Request');
+async function submitReq() {
+  var sn=document.getElementById('r-sn').value.trim(), st=document.getElementById('r-st').value, at=document.getElementById('r-at').value;
+  if (!sn||!st||!at) { showPA('req-alert','pa-err','Sample name, type and analysis are required.'); return; }
+  setL('req-btn', true, 'Submitting...');
+  try {
+    var r = await apiPost('submitRequest', {
+      userId: CU.id, userEmail: CU.email, userName: CU.firstName+' '+CU.lastName,
+      cnic: CU.cnic||'', sampleName: sn, sampleType: st, analysisType: at,
+      qty: document.getElementById('r-qt').value,
+      priority: document.getElementById('r-pr').value,
+      expectedDate: document.getElementById('r-dt').value,
+      notes: document.getElementById('r-nt').value.trim()
+    });
+    if (r.success) {
+      showPA('req-alert','pa-ok','✅ Request submitted! ID: '+r.requestId);
+      clearReqF();
+      setTimeout(function(){ showP('u-dash'); loadUReqs(); }, 1500);
+    } else {
+      showPA('req-alert','pa-err', r.message||'Failed.');
+    }
+  } catch(e) { showPA('req-alert','pa-err', e.message); }
+  setL('req-btn', false, 'Submit Request');
 }
-function clearReqF(){['r-sn','r-st','r-at','r-nt','r-dt'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('r-qt').value=1;document.getElementById('r-pr').value='Normal';}
 
-// ── ADMIN DASH ────────────────────────────────────────
-async function loadADash(){
-  showP('a-dash');const sEl=document.getElementById('a-stats'),pEl=document.getElementById('a-pend-tbl');
-  sEl.innerHTML=ld();pEl.innerHTML=`<div style="padding:28px;text-align:center">${ld()}</div>`;
-  try{
-    const[uR,rR]=await Promise.all([api('getUsers'),api('getAllRequests')]);
-    ALL_U=uR.users||[];ALL_R=rR.requests||[];
-    const pend=ALL_U.filter(u=>u.status==='pending'),wi=ALL_R.filter(r=>r.source==='Walk-in');
-    document.getElementById('pend-cnt').textContent=pend.length;
-    sEl.innerHTML=`
-      <div class="as"><div class="as-glow" style="background:var(--teal)"></div><div class="as-ico">🧪</div><div class="as-val">${ALL_R.length}</div><div class="as-lbl">Total Requests</div></div>
-      <div class="as"><div class="as-glow" style="background:var(--sky)"></div><div class="as-ico">📥</div><div class="as-val">${ALL_R.filter(r=>r.status==='Submitted').length}</div><div class="as-lbl">New</div></div>
-      <div class="as"><div class="as-glow" style="background:#6c63ff"></div><div class="as-ico">⚗️</div><div class="as-val">${ALL_R.filter(r=>r.status==='Processing').length}</div><div class="as-lbl">Processing</div></div>
-      <div class="as"><div class="as-glow" style="background:var(--amber)"></div><div class="as-ico">🚶</div><div class="as-val">${wi.length}</div><div class="as-lbl">Walk-ins</div></div>
-      <div class="as"><div class="as-glow" style="background:var(--teal)"></div><div class="as-ico">✅</div><div class="as-val">${ALL_R.filter(r=>r.status==='Completed').length}</div><div class="as-lbl">Completed</div></div>
-      <div class="as"><div class="as-glow" style="background:#ef4444"></div><div class="as-ico">⏳</div><div class="as-val">${pend.length}</div><div class="as-lbl">Pending Approval</div></div>`;
-    if(!pend.length){pEl.innerHTML=mt('✅','No pending approvals');return;}
-    pEl.innerHTML=`<table><thead><tr><th>Name</th><th>CNIC</th><th>Email</th><th>Org</th><th>Phone</th><th>Date</th><th>Actions</th></tr></thead><tbody>
-    ${pend.map(u=>`<tr><td class="td-p">${u.firstName} ${u.lastName}</td><td class="td-m">${u.cnic||'—'}</td><td class="td-m">${u.email}</td><td>${u.org||'—'}</td><td>${u.phone||'—'}</td><td class="td-m">${fd(u.createdAt)}</td><td class="td-a"><div class="ia"><button class="btn btn-a-ssft btn-xs" onclick="appUser('${u.id}','approved')">✓ Approve</button><button class="btn btn-a-dsft btn-xs" onclick="appUser('${u.id}','rejected')">✕ Reject</button></div></td></tr>`).join('')}
-    </tbody></table>`;
-  }catch(e){sEl.innerHTML=et(e.message);}
+function clearReqF() {
+  ['r-sn','r-st','r-at','r-nt','r-dt'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('r-qt').value = 1;
+  document.getElementById('r-pr').value = 'Normal';
 }
-async function appUser(uid,st){try{const r=await apiP('updateUserStatus',{userId:uid,status:st});if(r.success)loadADash();else alert(r.message);}catch(e){alert(e.message);}}
 
-// ── ADMIN REQUESTS ────────────────────────────────────
-async function loadAReqs(){
-  showP('a-reqs');const t=document.getElementById('a-reqs-tbl');t.innerHTML=`<div style="padding:28px;text-align:center">${ld()}</div>`;
-  try{const r=await api('getAllRequests');ALL_R=r.requests||[];renderAR(ALL_R);}catch(e){t.innerHTML=et(e.message);}
+// ── ADMIN DASHBOARD ─────────────────────────────────────────────
+async function loadADash() {
+  showP('a-dash');
+  var sEl = document.getElementById('a-stats');
+  var pEl = document.getElementById('a-pend-tbl');
+  sEl.innerHTML = ld(); pEl.innerHTML = '<div style="padding:28px;text-align:center">'+ld()+'</div>';
+  try {
+    var uR = await apiGet('getUsers');
+    var rR = await apiGet('getAllRequests');
+    ALL_U = uR.users || []; ALL_R = rR.requests || [];
+    var pend = ALL_U.filter(function(u){return u.status==='pending';});
+    var wi   = ALL_R.filter(function(r){return r.source==='Walk-in';});
+    document.getElementById('pend-cnt').textContent = pend.length;
+    sEl.innerHTML =
+      astat('🧪', ALL_R.length, 'Total Requests', 'var(--teal)') +
+      astat('📥', ALL_R.filter(function(r){return r.status==='Submitted';}).length, 'New', 'var(--sky)') +
+      astat('⚗️', ALL_R.filter(function(r){return r.status==='Processing';}).length, 'Processing', '#6c63ff') +
+      astat('🚶', wi.length, 'Walk-ins', 'var(--amber)') +
+      astat('✅', ALL_R.filter(function(r){return r.status==='Completed';}).length, 'Completed', 'var(--teal)') +
+      astat('⏳', pend.length, 'Pending Approval', '#ef4444');
+    if (!pend.length) { pEl.innerHTML = mt('✅','No pending approvals'); return; }
+    pEl.innerHTML = '<table><thead><tr><th>Name</th><th>CNIC</th><th>Email</th><th>Org</th><th>Joined</th><th>Actions</th></tr></thead><tbody>' +
+      pend.map(function(u){
+        return '<tr><td class="td-p">'+u.firstName+' '+u.lastName+'</td><td class="td-m">'+(u.cnic||'—')+'</td><td class="td-m">'+u.email+'</td><td>'+(u.org||'—')+'</td><td class="td-m">'+fd(u.createdAt)+'</td><td class="td-a"><div class="ia"><button class="btn btn-a-ssft btn-xs" onclick="appUser(\''+u.id+'\',\'approved\')">✓ Approve</button><button class="btn btn-a-dsft btn-xs" onclick="appUser(\''+u.id+'\',\'rejected\')">✕ Reject</button></div></td></tr>';
+      }).join('') +
+    '</tbody></table>';
+  } catch(e) { sEl.innerHTML = et(e.message); }
 }
-function filterR(){const fs=document.getElementById('f-status').value,ft=document.getElementById('f-type').value;let r=ALL_R;if(fs)r=r.filter(x=>x.status===fs);if(ft)r=r.filter(x=>ft==='Walk-in'?x.source==='Walk-in':x.source!=='Walk-in');renderAR(r);}
-function renderAR(reqs){
-  const t=document.getElementById('a-reqs-tbl');
-  if(!reqs.length){t.innerHTML=mt('📋','No requests found');return;}
-  t.innerHTML=`<table><thead><tr><th>ID</th><th>Patient/User</th><th>CNIC</th><th>Sample</th><th>Analysis</th><th>Source</th><th>Priority</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-  ${reqs.map(r=>`<tr><td class="td-m">${r.id}</td><td class="td-p">${r.userName||r.patientName||'—'}</td><td class="td-m">${r.cnic||'—'}</td><td>${r.sampleName}</td><td><span class="atag">${r.analysisType}</span></td><td>${r.source==='Walk-in'?'<span class="sb sb-wi">Walk-in</span>':'<span class="sb sb-sub">Online</span>'}</td><td class="${pcls(r.priority)}">${r.priority}</td><td class="td-m">${fd(r.createdAt)}</td><td><select class="sel-sm" onchange="updSt('${r.id}',this.value)">${['Submitted','Received','Processing','Completed'].map(s=>`<option ${s===r.status?'selected':''}>${s}</option>`).join('')}</select></td><td class="td-a"><div class="ia"><button class="btn btn-a-ghost btn-xs" onclick="adminVR('${r.id}')">Detail</button><button class="btn btn-a-vsft btn-xs" onclick="openU('${r.id}')">📄</button></div></td></tr>`).join('')}
-  </tbody></table>`;
+
+async function appUser(uid, st) {
+  try {
+    var r = await apiPost('updateUserStatus', {userId: uid, status: st});
+    if (r.success) loadADash(); else alert(r.message);
+  } catch(e) { alert(e.message); }
 }
-async function updSt(rid,st){try{const r=await apiP('updateRequestStatus',{requestId:rid,status:st});if(!r.success){alert(r.message);loadAReqs();}else{const x=ALL_R.find(y=>y.id===rid);if(x)x.status=st;}}catch(e){alert(e.message);}}
-function adminVR(id){
-  const r=ALL_R.find(x=>x.id===id);if(!r)return;
-  document.getElementById('mr-title').textContent=`Request ${r.id}`;
-  document.getElementById('mr-body').innerHTML=`<div class="info-grid" style="margin-bottom:14px"><div class="ii"><label>Patient/User</label><span>${r.patientName||r.userName||'—'}</span></div><div class="ii"><label>CNIC</label><span class="td-m">${r.cnic||'—'}</span></div><div class="ii"><label>Email</label><span>${r.userEmail||'—'}</span></div><div class="ii"><label>Phone</label><span>${r.phone||'—'}</span></div><div class="ii"><label>Sample</label><span>${r.sampleName}</span></div><div class="ii"><label>Type</label><span>${r.sampleType}</span></div><div class="ii"><label>Analysis</label><span>${r.analysisType}</span></div><div class="ii"><label>Qty</label><span>${r.qty}</span></div><div class="ii"><label>Priority</label><span class="${pcls(r.priority)}">${r.priority}</span></div><div class="ii"><label>Source</label><span>${r.source||'Online'}</span></div><div class="ii"><label>Status</label><span>${sb(r.status)}</span></div><div class="ii"><label>Date</label><span>${fd(r.createdAt)}</span></div>${r.gender?`<div class="ii"><label>Gender</label><span>${r.gender}</span></div>`:''} ${r.age?`<div class="ii"><label>Age</label><span>${r.age}</span></div>`:''} ${r.doctor?`<div class="ii"><label>Ref. Doctor</label><span>${r.doctor}</span></div>`:''} ${r.paymentMethod?`<div class="ii"><label>Payment</label><span>${r.paymentMethod}</span></div>`:''}</div>${r.notes?`<div class="fr"><label class="fl">Notes</label><p style="font-size:.85rem;color:rgba(255,255,255,.55);line-height:1.7">${r.notes}</p></div>`:''} ${r.analystNotes?`<div class="fr"><label class="fl">Analyst Notes</label><p style="font-size:.85rem;color:rgba(255,255,255,.55);line-height:1.7">${r.analystNotes}</p></div>`:''} ${r.reportUrl?`<div class="fr"><label class="fl">Report</label><div class="rbox">📄 <a href="${r.reportUrl}" target="_blank">View Report</a></div></div>`:''}`;
-  document.getElementById('mr-ft').innerHTML=`<button class="btn btn-a-vsft" onclick="closeM('modal-req');openU('${r.id}')">📄 Upload Report</button><button class="btn btn-a-ghost" onclick="closeM('modal-req')">Close</button>`;
+
+// ── ADMIN REQUESTS ──────────────────────────────────────────────
+async function loadAReqs() {
+  showP('a-reqs');
+  var t = document.getElementById('a-reqs-tbl');
+  t.innerHTML = '<div style="padding:28px;text-align:center">'+ld()+'</div>';
+  try {
+    var r = await apiGet('getAllRequests');
+    ALL_R = r.requests || [];
+    renderAR(ALL_R);
+  } catch(e) { t.innerHTML = et(e.message); }
+}
+
+function filterR() {
+  var fs = document.getElementById('f-status').value;
+  var ft = document.getElementById('f-type').value;
+  var list = ALL_R;
+  if (fs) list = list.filter(function(x){ return x.status===fs; });
+  if (ft === 'Walk-in') list = list.filter(function(x){ return x.source==='Walk-in'; });
+  if (ft === 'Online')  list = list.filter(function(x){ return x.source!=='Walk-in'; });
+  renderAR(list);
+}
+
+function renderAR(reqs) {
+  var t = document.getElementById('a-reqs-tbl');
+  if (!reqs.length) { t.innerHTML = mt('📋','No requests found'); return; }
+  t.innerHTML = '<table><thead><tr><th>ID</th><th>Patient/User</th><th>CNIC</th><th>Sample</th><th>Analysis</th><th>Source</th><th>Priority</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>' +
+    reqs.map(function(r){
+      var srcBadge = r.source==='Walk-in' ? '<span class="sb sb-wi">Walk-in</span>' : '<span class="sb sb-sub">Online</span>';
+      var statSel = '<select class="sel-sm" onchange="updSt(\''+r.id+'\',this.value)">' +
+        ['Submitted','Received','Processing','Completed'].map(function(s){
+          return '<option'+(s===r.status?' selected':'')+'>'+s+'</option>';
+        }).join('') + '</select>';
+      return '<tr><td class="td-m">'+r.id+'</td><td class="td-p">'+(r.userName||r.patientName||'—')+'</td><td class="td-m">'+(r.cnic||'—')+'</td><td>'+r.sampleName+'</td><td><span class="atag">'+r.analysisType+'</span></td><td>'+srcBadge+'</td><td class="'+pcls(r.priority)+'">'+r.priority+'</td><td class="td-m">'+fd(r.createdAt)+'</td><td>'+statSel+'</td><td class="td-a"><div class="ia"><button class="btn btn-a-ghost btn-xs" onclick="adminVR(\''+r.id+'\')">Detail</button><button class="btn btn-a-vsft btn-xs" onclick="openU(\''+r.id+'\')">📄</button></div></td></tr>';
+    }).join('') +
+  '</tbody></table>';
+}
+
+async function updSt(rid, st) {
+  try {
+    var r = await apiPost('updateRequestStatus', {requestId: rid, status: st});
+    if (!r.success) { alert(r.message); loadAReqs(); }
+    else { var x=ALL_R.find(function(y){return y.id===rid;}); if(x) x.status=st; }
+  } catch(e) { alert(e.message); }
+}
+
+function adminVR(id) {
+  var r = ALL_R.find(function(x){return x.id===id;});
+  if (!r) return;
+  document.getElementById('mr-title').textContent = 'Request ' + r.id;
+  document.getElementById('mr-body').innerHTML =
+    '<div class="info-grid" style="margin-bottom:14px">' +
+    ii('Patient/User', r.patientName||r.userName||'—') + ii('CNIC', r.cnic||'—') +
+    ii('Email', r.userEmail||'—') + ii('Phone', r.phone||'—') +
+    ii('Sample', r.sampleName) + ii('Type', r.sampleType) +
+    ii('Analysis', r.analysisType) + ii('Priority', r.priority) +
+    ii('Source', r.source||'Online') + ii('Status', sb(r.status)) +
+    ii('Date', fd(r.createdAt)) + ii('Payment', r.paymentMethod||'—') +
+    (r.gender ? ii('Gender',r.gender) : '') + (r.age ? ii('Age',r.age) : '') +
+    (r.doctor ? ii('Ref. Doctor',r.doctor) : '') +
+    '</div>' +
+    (r.notes ? '<div class="fr"><label class="fl">Notes</label><p style="font-size:.85rem;color:rgba(255,255,255,.55);line-height:1.7">'+r.notes+'</p></div>' : '') +
+    (r.analystNotes ? '<div class="fr"><label class="fl">Analyst Notes</label><p style="font-size:.85rem;color:rgba(255,255,255,.55);line-height:1.7">'+r.analystNotes+'</p></div>' : '') +
+    (r.reportUrl ? '<div class="fr"><label class="fl">Report</label><div class="rbox">📄 <a href="'+r.reportUrl+'" target="_blank">View Report</a></div></div>' : '');
+  document.getElementById('mr-ft').innerHTML =
+    '<button class="btn btn-a-vsft" onclick="closeM(\'modal-req\');openU(\''+r.id+'\')">📄 Upload Report</button>' +
+    '<button class="btn btn-a-ghost" onclick="closeM(\'modal-req\')">Close</button>';
   openM('modal-req');
 }
 
-// ── WALK-IN ───────────────────────────────────────────
-async function submitWI(){
-  const nm=document.getElementById('wi-nm').value.trim(),cn=document.getElementById('wi-cn').value.trim(),st=document.getElementById('wi-st').value,at=document.getElementById('wi-at').value;
-  const si=document.getElementById('wi-si').value.trim()||`WI-${Date.now().toString(36).toUpperCase()}`;
-  if(!nm||!cn||!st||!at){showPA('wi-alert','pa-err','Full name, CNIC, sample type and analysis required.');return;}
-  setL('wi-btn',true,'Registering…');
-  try{
-    const r=await apiP('submitWalkin',{patientName:nm,cnic:cn,phone:document.getElementById('wi-ph').value.trim(),age:document.getElementById('wi-ag').value,gender:document.getElementById('wi-gn').value,doctor:document.getElementById('wi-dr').value.trim(),paymentMethod:document.getElementById('wi-py').value,sampleName:si,sampleType:st,analysisType:at,priority:document.getElementById('wi-pr').value,expectedDate:document.getElementById('wi-dt').value,notes:document.getElementById('wi-nt').value.trim(),source:'Walk-in'});
-    if(r.success){showPA('wi-alert','pa-ok',`✅ Sample registered! ID: ${r.requestId}`);clearWI();}
-    else showPA('wi-alert','pa-err',r.message||'Failed.');
-  }catch(e){showPA('wi-alert','pa-err',e.message);}
-  setL('wi-btn',false,'Register Sample');
-}
-function clearWI(){['wi-nm','wi-cn','wi-ph','wi-ag','wi-dr','wi-si','wi-nt','wi-dt'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['wi-st','wi-at','wi-gn'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('wi-pr').value='Normal';document.getElementById('wi-py').value='Cash';}
-
-// ── ADMIN CNIC ────────────────────────────────────────
-async function adminCnicSearch(){
-  const cn=document.getElementById('a-cnic-in').value.trim();
-  if(!cn){showPA('a-cnic-alert','pa-err','Enter a CNIC number.');return;}
-  const rEl=document.getElementById('a-cnic-res');rEl.innerHTML=`<div style="padding:20px;text-align:center">${ld()}</div>`;
-  try{
-    const r=await api('getByCnic',{cnic:cn});
-    if(!r.success){rEl.innerHTML=et(r.message||'No records found.');return;}
-    const reqs=r.requests||[];
-    if(!reqs.length){rEl.innerHTML=mt('🔍','No sample records found for this CNIC.');return;}
-    const name=r.name||reqs[0]?.patientName||reqs[0]?.userName||'Patient';
-    reqs.forEach(req=>{if(!ALL_R.find(x=>x.id===req.id))ALL_R.push(req);});
-    rEl.innerHTML=`<div class="a-card" style="margin-top:0"><div class="cnic-prof"><div class="cnic-ava">${name[0]||'?'}</div><div><div class="cnic-name">${name}</div><div class="cnic-meta">CNIC: ${cn} · ${reqs.length} record(s) · ${reqs.filter(x=>x.status==='Completed').length} completed</div></div></div><div class="tw"><table><thead><tr><th>Request ID</th><th>Sample</th><th>Analysis</th><th>Source</th><th>Date</th><th>Status</th><th></th></tr></thead><tbody>
-    ${reqs.map(req=>`<tr><td class="td-m">${req.id}</td><td class="td-p">${req.sampleName}</td><td><span class="atag">${req.analysisType}</span></td><td>${req.source==='Walk-in'?'<span class="sb sb-wi">Walk-in</span>':'<span class="sb sb-sub">Online</span>'}</td><td class="td-m">${fd(req.createdAt)}</td><td>${sb(req.status)}</td><td class="td-a"><div class="ia"><button class="btn btn-a-ghost btn-xs" onclick="adminVR('${req.id}')">Detail</button>${req.reportUrl?`<a href="${req.reportUrl}" target="_blank" class="btn btn-a-ssft btn-xs" style="text-decoration:none">⬇ Report</a>`:''}</div></td></tr>`).join('')}
-    </tbody></table></div></div>`;
-  }catch(e){rEl.innerHTML=et(e.message);}
+// ── WALK-IN ──────────────────────────────────────────────────────
+async function submitWI() {
+  var nm=document.getElementById('wi-nm').value.trim(), cn=document.getElementById('wi-cn').value.trim();
+  var st=document.getElementById('wi-st').value, at=document.getElementById('wi-at').value;
+  var si=document.getElementById('wi-si').value.trim() || ('WI-'+Date.now().toString(36).toUpperCase());
+  if (!nm||!st||!at) { showPA('wi-alert','pa-err','Full name, sample type and analysis are required.'); return; }
+  setL('wi-btn', true, 'Registering...');
+  try {
+    var r = await apiPost('submitWalkin', {
+      patientName: nm, cnic: cn,
+      phone: document.getElementById('wi-ph').value.trim(),
+      age: document.getElementById('wi-ag').value,
+      gender: document.getElementById('wi-gn').value,
+      doctor: document.getElementById('wi-dr').value.trim(),
+      paymentMethod: document.getElementById('wi-py').value,
+      sampleName: si, sampleType: st, analysisType: at,
+      priority: document.getElementById('wi-pr').value,
+      expectedDate: document.getElementById('wi-dt').value,
+      notes: document.getElementById('wi-nt').value.trim()
+    });
+    if (r.success) { showPA('wi-alert','pa-ok','✅ Sample registered! ID: '+r.requestId); clearWI(); }
+    else showPA('wi-alert','pa-err', r.message||'Failed.');
+  } catch(e) { showPA('wi-alert','pa-err', e.message); }
+  setL('wi-btn', false, 'Register Sample');
 }
 
-// ── PUBLIC CNIC SEARCH (hero) ─────────────────────────
-async function heroCnicSearch(){
-  const cn=document.getElementById('hero-cnic').value.trim();
-  if(!cn){showHA('ha-err','Please enter your CNIC number.');return;}
+function clearWI() {
+  ['wi-nm','wi-cn','wi-ph','wi-ag','wi-dr','wi-si','wi-nt','wi-dt'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  ['wi-st','wi-at','wi-gn'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('wi-pr').value = 'Normal';
+  document.getElementById('wi-py').value = 'Cash';
+}
+
+// ── ADMIN CNIC ───────────────────────────────────────────────────
+async function adminCnicSearch() {
+  var cn  = document.getElementById('a-cnic-in').value.trim();
+  var rEl = document.getElementById('a-cnic-res');
+  if (!cn) { showPA('a-cnic-alert','pa-err','Enter a CNIC number.'); return; }
+  rEl.innerHTML = '<div style="padding:20px;text-align:center">'+ld()+'</div>';
+  try {
+    var r = await apiGet('getByCnic', {cnic: cn});
+    var reqs = r.requests || [];
+    if (!reqs.length) { rEl.innerHTML = mt('🔍','No sample records found for CNIC: '+cn); return; }
+    var name = r.name || reqs[0].patientName || reqs[0].userName || 'Patient';
+    reqs.forEach(function(req){ if (!ALL_R.find(function(x){return x.id===req.id;})) ALL_R.push(req); });
+    rEl.innerHTML = '<div class="a-card" style="margin-top:0"><div class="cnic-prof"><div class="cnic-ava">'+(name[0]||'?')+'</div><div><div class="cnic-name">'+name+'</div><div class="cnic-meta">CNIC: '+cn+' · '+reqs.length+' record(s) · '+reqs.filter(function(x){return x.status==='Completed';}).length+' completed</div></div></div>' +
+      '<div class="tw"><table><thead><tr><th>Request ID</th><th>Sample</th><th>Analysis</th><th>Source</th><th>Date</th><th>Status</th><th></th></tr></thead><tbody>' +
+      reqs.map(function(req){
+        return '<tr><td class="td-m">'+req.id+'</td><td class="td-p">'+req.sampleName+'</td><td><span class="atag">'+req.analysisType+'</span></td><td>'+(req.source==='Walk-in'?'<span class="sb sb-wi">Walk-in</span>':'<span class="sb sb-sub">Online</span>')+'</td><td class="td-m">'+fd(req.createdAt)+'</td><td>'+sb(req.status)+'</td><td class="td-a"><div class="ia"><button class="btn btn-a-ghost btn-xs" onclick="adminVR(\''+req.id+'\')">Detail</button>'+(req.reportUrl?'<a href="'+req.reportUrl+'" target="_blank" class="btn btn-a-ssft btn-xs" style="text-decoration:none">⬇ Report</a>':'')+'</div></td></tr>';
+      }).join('') +
+    '</tbody></table></div></div>';
+  } catch(e) { rEl.innerHTML = et(e.message); }
+}
+
+// ── PUBLIC CNIC TRACKER (hero) ───────────────────────────────────
+async function heroCnicSearch() {
+  var cn = document.getElementById('hero-cnic').value.trim();
+  if (!cn) { showHA('ha-err','Please enter your CNIC number.'); return; }
   document.getElementById('hero-res').classList.remove('show');
-  showHA('ha-info','Searching…');
-  try{
-    const r=await api('getByCnic',{cnic:cn});
+  showHA('ha-info','Searching...');
+  try {
+    var r = await apiGet('getByCnic', {cnic: cn});
     document.getElementById('hero-alert').classList.remove('show');
-    if(!r.success||!r.requests||!r.requests.length){showHA('ha-warn','No records found for this CNIC. Please verify and try again.');return;}
-    const reqs=r.requests,name=r.name||reqs[0]?.patientName||reqs[0]?.userName||'Patient';
-    const sbMap={Submitted:'sb-sub',Received:'sb-recv',Processing:'sb-proc',Completed:'sb-comp'};
-    document.getElementById('hero-res-head').innerHTML=`<div class="crb-ava">${name[0]||'?'}</div><div><div class="crb-name">${name}</div><div class="crb-meta">CNIC: ${cn} · ${reqs.length} sample(s) · ${reqs.filter(x=>x.status==='Completed').length} completed</div></div>`;
-    document.getElementById('hero-res-body').innerHTML=reqs.map(req=>`<div class="crb-row"><div><div class="crb-sample">${req.sampleName}</div><div class="crb-analysis">${req.analysisType}</div></div><div style="display:flex;align-items:center;gap:8px"><span class="sb-sm ${sbMap[req.status]||'sb-sub'}">${req.status}</span>${req.reportUrl?`<a href="${req.reportUrl}" target="_blank" class="crb-report-link">⬇ Report</a>`:''}</div></div>`).join('');
+    if (!r.requests || !r.requests.length) {
+      showHA('ha-warn','No records found for CNIC: '+cn+'. Please verify the number.');
+      return;
+    }
+    var reqs = r.requests;
+    var name = r.name || reqs[0].patientName || reqs[0].userName || 'Patient';
+    var sbMap = {Submitted:'sb-sub', Received:'sb-recv', Processing:'sb-proc', Completed:'sb-comp'};
+    document.getElementById('hero-res-head').innerHTML =
+      '<div class="crb-ava">'+(name[0]||'?')+'</div>' +
+      '<div><div class="crb-name">'+name+'</div>' +
+      '<div class="crb-meta">CNIC: '+cn+' · '+reqs.length+' sample(s) · '+reqs.filter(function(x){return x.status==='Completed';}).length+' completed</div></div>';
+    document.getElementById('hero-res-body').innerHTML = reqs.map(function(req){
+      return '<div class="crb-row"><div><div class="crb-sample">'+req.sampleName+'</div><div class="crb-analysis">'+req.analysisType+'</div></div>' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span class="sb-sm '+(sbMap[req.status]||'sb-sub')+'">'+req.status+'</span>' +
+        (req.reportUrl ? '<a href="'+req.reportUrl+'" target="_blank" class="crb-report-link">⬇ Report</a>' : '') +
+        '</div></div>';
+    }).join('');
     document.getElementById('hero-res').classList.add('show');
-  }catch(e){showHA('ha-err',e.message);}
-}
-function showHA(cls,msg){const el=document.getElementById('hero-alert');el.className=`alert ${cls} show`;el.textContent=msg;}
-
-// ── ADMIN USERS ───────────────────────────────────────
-async function loadAUsers(){
-  showP('a-users');const t=document.getElementById('a-users-tbl');t.innerHTML=`<div style="padding:28px;text-align:center">${ld()}</div>`;
-  try{
-    const r=await api('getUsers');const us=r.users||[];
-    if(!us.length){t.innerHTML=mt('👥','No users registered yet');return;}
-    t.innerHTML=`<table><thead><tr><th>Name</th><th>CNIC</th><th>Email</th><th>Org</th><th>Phone</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody>
-    ${us.map(u=>`<tr><td class="td-p">${u.firstName} ${u.lastName}</td><td class="td-m">${u.cnic||'—'}</td><td class="td-m">${u.email}</td><td>${u.org||'—'}</td><td>${u.phone||'—'}</td><td><span class="rtag ${u.role==='admin'?'r-admin':'r-user'}">${u.role}</span></td><td>${sb(u.status)}</td><td class="td-m">${fd(u.createdAt)}</td><td class="td-a">${u.role!=='admin'?`<div class="ia">${u.status==='pending'?`<button class="btn btn-a-ssft btn-xs" onclick="appUser('${u.id}','approved')">Approve</button>`:''} ${u.status==='approved'?`<button class="btn btn-a-dsft btn-xs" onclick="appUser('${u.id}','rejected')">Suspend</button>`:''} ${u.status==='rejected'?`<button class="btn btn-a-ssft btn-xs" onclick="appUser('${u.id}','approved')">Restore</button>`:''}</div>`:'—'}</td></tr>`).join('')}
-    </tbody></table>`;
-  }catch(e){t.innerHTML=et(e.message);}
+  } catch(e) { showHA('ha-err', e.message); }
 }
 
-// ── REPORT ────────────────────────────────────────────
-function openU(rid){document.getElementById('up-rid').value=rid;document.getElementById('up-url').value='';document.getElementById('up-notes').value='';document.getElementById('up-alert').classList.remove('show');openM('modal-upload');}
-async function submitReport(){
-  const rid=document.getElementById('up-rid').value,url=document.getElementById('up-url').value.trim(),notes=document.getElementById('up-notes').value.trim();
-  if(!url){showMA('ma-err','Please enter the report URL.');return;}
-  setL('up-btn',true,'Uploading…');
-  try{const r=await apiP('uploadReport',{requestId:rid,reportUrl:url,analystNotes:notes});if(r.success){closeM('modal-upload');loadAReqs();}else showMA('ma-err',r.message||'Failed.');}catch(e){showMA('ma-err',e.message);}
-  setL('up-btn',false,'Upload & Complete');
+function showHA(cls, msg) {
+  var el = document.getElementById('hero-alert');
+  el.className = 'alert '+cls+' show';
+  el.textContent = msg;
 }
 
-// ── HELPERS ───────────────────────────────────────────
-function sb(s){const m={pending:'sb-pend',approved:'sb-appr',rejected:'sb-rej',Submitted:'sb-sub',Received:'sb-recv',Processing:'sb-proc',Completed:'sb-comp'};return `<span class="sb ${m[s]||'sb-pend'}">${s}</span>`;}
-function pcls(p){return{Normal:'pri-n',Urgent:'pri-u',Rush:'pri-r'}[p]||'pri-n';}
-function fd(d){if(!d)return'—';const dt=new Date(d);return isNaN(dt)?d:dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
-function showPA(id,cls,msg){const el=document.getElementById(id);if(!el)return;el.className=`pa ${cls} show`;el.textContent=msg;}
-function showMA(cls,msg){const el=document.getElementById('up-alert');el.className=`modal-alert ${cls} show`;el.textContent=msg;}
-function setL(id,on,txt){const el=document.getElementById(id);if(!el)return;el.innerHTML=on?`<span class="loader"></span> ${txt}`:txt;}
-function ld(){return '<div style="text-align:center;padding:18px"><div class="loader"></div></div>';}
-function mt(i,t){return `<div class="empty"><div class="empty-i">${i}</div><div class="empty-t">${t}</div></div>`;}
-function et(m){return `<div class="empty"><div class="empty-i">⚠️</div><div class="empty-t">${m}</div></div>`;}
-function openM(id){document.getElementById(id).classList.add('show');}
-function closeM(id){document.getElementById(id).classList.remove('show');}
-document.querySelectorAll('.modal-ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('show');}));
+function heroCnicFocus() {
+  document.getElementById('hero-cnic').scrollIntoView({behavior:'smooth'});
+  document.getElementById('hero-cnic').focus();
+}
 
-// Sticky nav active state on scroll
-window.addEventListener('scroll',()=>{
-  const sections=['services-sec','about-sec','packages-sec','contact-sec','portal-sec'];
-  const links=document.querySelectorAll('.nav-link');
-  let current='';
-  sections.forEach(id=>{const el=document.getElementById(id);if(el&&window.scrollY>=el.offsetTop-120)current=id;});
-  links.forEach((l,i)=>{l.classList.remove('active');if((current==='services-sec'&&i===1)||(curr
+// ── ADMIN USERS ──────────────────────────────────────────────────
+async function loadAUsers() {
+  showP('a-users');
+  var t = document.getElementById('a-users-tbl');
+  t.innerHTML = '<div style="padding:28px;text-align:center">'+ld()+'</div>';
+  try {
+    var r  = await apiGet('getUsers');
+    var us = r.users || [];
+    if (!us.length) { t.innerHTML = mt('👥','No users registered yet'); return; }
+    t.innerHTML = '<table><thead><tr><th>Name</th><th>CNIC</th><th>Email</th><th>Org</th><th>Phone</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody>' +
+      us.map(function(u){
+        var actions = u.role==='admin' ? '—' :
+          '<div class="ia">' +
+          (u.status==='pending'  ? '<button class="btn btn-a-ssft btn-xs" onclick="appUser(\''+u.id+'\',\'approved\')">Approve</button>' : '') +
+          (u.status==='approved' ? '<button class="btn btn-a-dsft btn-xs" onclick="appUser(\''+u.id+'\',\'rejected\')">Suspend</button>' : '') +
+          (u.status==='rejected' ? '<button class="btn btn-a-ssft btn-xs" onclick="appUser(\''+u.id+'\',\'approved\')">Restore</button>'  : '') +
+          '</div>';
+        return '<tr><td class="td-p">'+u.firstName+' '+u.lastName+'</td><td class="td-m">'+(u.cnic||'—')+'</td><td class="td-m">'+u.email+'</td><td>'+(u.org||'—')+'</td><td>'+(u.phone||'—')+'</td><td><span class="rtag '+(u.role==='admin'?'r-admin':'r-user')+'">'+u.role+'</span></td><td>'+sb(u.status)+'</td><td class="td-m">'+fd(u.createdAt)+'</td><td class="td-a">'+actions+'</td></tr>';
+      }).join('') +
+    '</tbody></table>';
+  } catch(e) { t.innerHTML = et(e.message); }
+}
+
+// ── REPORT ───────────────────────────────────────────────────────
+function openU(rid) {
+  document.getElementById('up-rid').value = rid;
+  document.getElementById('up-url').value = '';
+  document.getElementById('up-notes').value = '';
+  document.getElementById('up-alert').classList.remove('show');
+  openM('modal-upload');
+}
+
+async function submitReport() {
+  var rid   = document.getElementById('up-rid').value;
+  var url   = document.getElementById('up-url').value.trim();
+  var notes = document.getElementById('up-notes').value.trim();
+  if (!url) { showMA('ma-err','Please enter the report URL.'); return; }
+  setL('up-btn', true, 'Uploading...');
+  try {
+    var r = await apiPost('uploadReport', {requestId: rid, reportUrl: url, analystNotes: notes});
+    if (r.success) { closeM('modal-upload'); loadAReqs(); }
+    else showMA('ma-err', r.message||'Failed.');
+  } catch(e) { showMA('ma-err', e.message); }
+  setL('up-btn', false, 'Upload & Complete');
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────
+function astat(icon, val, lbl, color) {
+  return '<div class="as"><div class="as-glow" style="background:'+color+'"></div><div class="as-ico">'+icon+'</div><div class="as-val">'+val+'</div><div class="as-lbl">'+lbl+'</div></div>';
+}
+function ii(label, val) {
+  return '<div class="ii"><label>'+label+'</label><span>'+val+'</span></div>';
+}
+function sb(s) {
+  var m = {pending:'sb-pend', approved:'sb-appr', rejected:'sb-rej', Submitted:'sb-sub', Received:'sb-recv', Processing:'sb-proc', Completed:'sb-comp'};
+  return '<span class="sb '+(m[s]||'sb-pend')+'">'+s+'</span>';
+}
+function pcls(p) { return {Normal:'pri-n',Urgent:'pri-u',Rush:'pri-r'}[p]||'pri-n'; }
+function fd(d) {
+  if (!d) return '—';
+  var dt = new Date(d);
+  return isNaN(dt) ? d : dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+function showPA(id, cls, msg) { var el=document.getElementById(id); if(!el) return; el.className='pa '+cls+' show'; el.textContent=msg; }
+function showMA(cls, msg)      { var el=document.getElementById('up-alert'); el.className='modal-alert '+cls+' show'; el.textContent=msg; }
+function setL(id, on, txt)     { var el=document.getElementById(id); if(!el) return; el.innerHTML=on?'<span class="loader"></span> '+txt:txt; }
+function ld()   { return '<div style="text-align:center;padding:18px"><div class="loader"></div></div>'; }
+function mt(i,t){ return '<div class="empty"><div class="empty-i">'+i+'</div><div class="empty-t">'+t+'</div></div>'; }
+function et(m)  { return '<div class="empty"><div class="empty-i">⚠️</div><div class="empty-t">'+m+'</div></div>'; }
+function openM(id)  { document.getElementById(id).classList.add('show'); }
+function closeM(id) { document.getElementById(id).classList.remove('show'); }
+
+document.querySelectorAll('.modal-ov').forEach(function(o){
+  o.addEventListener('click', function(e){ if(e.target===o) o.classList.remove('show'); });
+});
+
+function toggleMobileMenu() {}
+
+window.addEventListener('scroll', function() {
+  var secs  = ['services-sec','about-sec','packages-sec','contact-sec','portal-sec'];
+  var links = document.querySelectorAll('.nav-link');
+  var cur   = '';
+  secs.forEach(function(id){ var el=document.getElementById(id); if(el&&window.scrollY>=el.offsetTop-120) cur=id; });
+  links.forEach(function(l,i){
+    l.classList.remove('active');
+    if ((cur==='services-sec'&&i===
